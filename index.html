@@ -187,9 +187,21 @@
 
     $stopBtn.onclick = () => {
       if (rec) rec.stop();
-      $status.textContent = '録音停止しました';
       $startBtn.disabled = false;
       $stopBtn.disabled = true;
+
+      const clinic = document.getElementById('clinicSelect').value;
+      const staff = document.getElementById('staffSelect').value;
+      const score = document.getElementById('total-score').textContent;
+      const memo = document.getElementById('memo').value;
+      const transcript = document.getElementById('log').value;
+
+      const params = new URLSearchParams({
+        clinic, staff, score, max: '41', transcript, memo
+      });
+
+      window.location.href = 'page2.html?' + params.toString();
+    };
     };// スコア計算
     const categories = [
       { id: 0, count: 6 },
