@@ -93,9 +93,41 @@
       document.getElementById('saveBtn').disabled = false;
     }
 
-    function saveResult() {
+    async function saveResult() {
       const comment = document.getElementById('manager-comment').value;
-      alert('保存しました！\n評価：' + selectedRank + '\nコメント：' + comment);
+      const aiRank = document.getElementById('ai-rank').textContent.replace('評価', '').trim();
+
+      const data = {
+        clinic,
+        staff,
+        date: new Date().toLocaleDateString('ja-JP'),
+        score: score + '/' + maxScore,
+        aiRank,
+        managerRank: selectedRank,
+        managerComment: comment,
+        transcript,
+        memo
+      };
+
+      document.getElementById('saveBtn').textContent = '保存中...';
+      document.getElementById('saveBtn').disabled = true;
+
+      try {
+        const res = await fetch('https://script.google.com/macros/s/AKfycbyWHxYArHJcoFMa5ujnvVDx4o867YV3XY8Ox4ZjxQUoDFb4elGASUaxkwEveydSz7K_/exec', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert('保存しました！\n議事録URL：' + result.docUrl);
+          window.open(result.docUrl, '_blank');
+        }
+      } catch (err) {
+        alert('保存に失敗しました：' + err.message);
+      } finally {
+        document.getElementById('saveBtn').textContent = 'この評価を保存する';
+        document.getElementById('saveBtn').disabled = false;
+      }
     }
 
     // AI評価を生成
