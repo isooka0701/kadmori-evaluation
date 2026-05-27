@@ -70,7 +70,6 @@
   </div>
 
   <script>
-    // 前のページからデータを受け取る
     const params = new URLSearchParams(window.location.search);
     const clinic = params.get('clinic') || '-';
     const staff = params.get('staff') || '-';
@@ -98,22 +97,18 @@
       const aiRank = document.getElementById('ai-rank').textContent.replace('評価', '').trim();
 
       const data = {
-        clinic,
-        staff,
+        clinic, staff,
         date: new Date().toLocaleDateString('ja-JP'),
         score: score + '/' + maxScore,
-        aiRank,
-        managerRank: selectedRank,
-        managerComment: comment,
-        transcript,
-        memo
+        aiRank, managerRank: selectedRank,
+        managerComment: comment, transcript, memo
       };
 
       document.getElementById('saveBtn').textContent = '保存中...';
       document.getElementById('saveBtn').disabled = true;
 
       try {
-        const res = await fetch('https://script.google.com/macros/s/AKfycbyWHxYArHJcoFMa5ujnvVDx4o867YV3XY8Ox4ZjxQUoDFb4elGASUaxkwEveydSz7K_/exec', {
+        const res = await fetch('https://script.google.com/macros/s/AKfycbwLYg0C1c53pOjjjiWbsBtrKYAvphAyrt1VXJDB6tF7_7-S44f3u3EkxorH_9hbV8hh/exec', {
           method: 'POST',
           body: JSON.stringify(data)
         });
@@ -130,11 +125,8 @@
       }
     }
 
-    // AI評価を生成
     async function generateAIEvaluation() {
-      const prompt = `
-あなたは美容クリニックのスタッフ評価の専門家です。
-以下の情報をもとに、スタッフの評価をしてください。
+      const prompt = `あなたは美容クリニックのスタッフ評価の専門家です。以下の情報をもとに、スタッフの評価をしてください。
 
 スタッフ名：${staff}
 チェックリストスコア：${score}/${maxScore}
@@ -143,8 +135,7 @@
 
 以下の形式で回答してください：
 1行目：S/A/B/C/Dのいずれか1文字のみ
-2行目以降：200字以内で評価コメント（良い点・課題・次回への期待を含める）
-`;
+2行目以降：200字以内で評価コメント（良い点・課題・次回への期待を含める）`;
 
       try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -156,13 +147,11 @@
             messages: [{ role: 'user', content: prompt }]
           })
         });
-
         const data = await response.json();
         const text = data.content[0].text;
         const lines = text.trim().split('\n');
         const rank = lines[0].trim();
         const comment = lines.slice(1).join('\n').trim();
-
         document.getElementById('ai-loading').style.display = 'none';
         document.getElementById('ai-result').style.display = 'block';
         document.getElementById('ai-rank').textContent = rank + '評価';
