@@ -151,11 +151,28 @@
         return;
       }
 
+     const spreadsheetIds = {
+        '大阪院': '1FIG816UzGsRKZ7BUxH2rYzUAbj-NYsPvYNUhvdCeKE0',
+        '東京院': '13rriiBAqhyhGN2EeAxEpSTNLO2nxJCEWvc0BhspMxDI'
+      };
+
       try {
-        const res = await fetch(GAS_URL + '?clinic=' + encodeURIComponent(clinic));
-        const data = await res.json();
+        const ssId = spreadsheetIds[clinic];
+        const url = `https://docs.google.com/spreadsheets/d/${ssId}/gviz/tq?tqx=out:json&sheet=Sheet1`;
+        const res = await fetch(url);
+        const text = await res.text();
+        const json = JSON.parse(text.replace('/*O_o*/', '').replace('google.visualization.Query.setResponse(', '').replace(');', ''));
+        const rows = json.table.rows;
         staffSelect.innerHTML = '<option value="">選択してください</option>';
-        data.staffList.forEach(name => {
+        rows.forEach(row => {
+          const name = row.c[1] && row.c[1].v;
+          if (name) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            staffSelect.appendChild(opt);
+          }
+        });
           const opt = document.createElement('option');
           opt.value = name;
           opt.textContent = name;
