@@ -20,7 +20,7 @@
     .category-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .category-name { font-size: 14px; font-weight: bold; color: #5c3d1e; flex: 1; }
     .category-score { font-size: 13px; color: #888; margin-right: 12px; }
-    .ai-badge { background: #fff8f3; border: 1px solid #f0e8de; border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: bold; color: #5c3d1e; margin-right: 8px; }
+    .ref-badge { background: #fff8f3; border: 1px solid #f0e8de; border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: bold; color: #5c3d1e; margin-right: 8px; }
     .rank-btns { display: flex; gap: 6px; }
     .rank-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #ddd; background: white; font-size: 13px; font-weight: bold; cursor: pointer; color: #5c3d1e; }
     .rank-btn.selected { background: #5c3d1e; color: white; border-color: #5c3d1e; }
@@ -34,7 +34,7 @@
 </head>
 <body>
   <h1>評価結果</h1>
-  <p class="subtitle">AIの提案を参考に、評価者が最終評価を決定してください。</p>
+  <p class="subtitle">参考評価を参考に、評価者が最終評価を決定してください。</p>
 
   <div class="card">
     <h2>面談情報</h2>
@@ -54,7 +54,7 @@
 
   <div class="card">
     <h2>📊 カテゴリ別評価</h2>
-    <p style="font-size:13px; color:#888; margin-bottom:16px;">AIの提案を参考に、各カテゴリの評価と理由を入力してください</p>
+    <p style="font-size:13px; color:#888; margin-bottom:16px;">参考評価を参考に、各カテゴリの評価と理由を入力してください</p>
     <div id="category-list"></div>
   </div>
 
@@ -100,9 +100,9 @@
     let selectedTotal = '';
 
     function getAutoRank(checked, max) {
-      const ratio = checked / max;
-      if (ratio >= 0.8) return 'A';
-      if (ratio >= 0.5) return 'B';
+      if (checked === max) return 'S';
+      if (checked >= max - 1) return 'A';
+      if (checked >= Math.ceil(max / 2)) return 'B';
       return 'C';
     }
 
@@ -139,9 +139,9 @@
         <div class="category-header">
           <span class="category-name">${cat.name}</span>
           <span class="category-score">${checked}/${cat.max}</span>
-          <span class="ai-badge">AI: ${autoRank}</span>
+          <span class="ref-badge">参考: ${autoRank}</span>
           <div class="rank-btns">
-            ${['A','B','C'].map(r => `
+            ${['S','A','B','C'].map(r => `
               <button class="rank-btn" data-index="${i}" data-rank="${r}" onclick="selectCategoryRank(${i}, '${r}')">${r}</button>
             `).join('')}
           </div>
