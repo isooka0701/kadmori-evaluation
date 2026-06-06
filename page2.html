@@ -166,7 +166,8 @@
         managerRank: selectedTotal,
         managerComment: comment,
         categoryReasons,
-        transcript, memo
+transcript, memo,
+checklistDetail: categories.map((cat, i) => cat.name + ': ' + (categoryScores[i] || 0) + '/' + cat.max).join('\n')
       };
 
       document.getElementById('saveBtn').textContent = '保存中...';
