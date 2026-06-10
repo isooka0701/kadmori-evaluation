@@ -44,9 +44,15 @@
       </select>
     </div>
     <div>
-      <label>名前</label>
+      <label>スタッフ名</label>
       <input type="text" id="staffSelect" placeholder="スタッフ名を入力" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:white;">
     </div>
+  </div>
+
+  <!-- 評価者名の入力欄を追加 -->
+  <div style="margin-bottom: 24px;">
+    <label>評価者名</label>
+    <input type="text" id="evaluatorName" placeholder="評価者名を入力" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:white;">
   </div>
 
   <div class="card">
@@ -144,13 +150,8 @@
     document.getElementById('clinicSelect').addEventListener('change', async function() {
       const clinic = this.value;
       const staffSelect = document.getElementById('staffSelect');
-      staffSelect.innerHTML = '<option value="">取得中...</option>';
-
-      if (!clinic) {
-        staffSelect.innerHTML = '<option value="">院を先に選択してください</option>';
-        return;
-      }
-
+      staffSelect.value = '';
+      if (!clinic) return;
       try {
         const ssId = spreadsheetIds[clinic];
         const url = `https://docs.google.com/spreadsheets/d/${ssId}/gviz/tq?tqx=out:json`;
@@ -158,18 +159,19 @@
         const text = await res.text();
         const json = JSON.parse(text.replace('/*O_o*/', '').replace('google.visualization.Query.setResponse(', '').replace(');', ''));
         const rows = json.table.rows;
-        staffSelect.innerHTML = '<option value="">選択してください</option>';
-        rows.forEach(row => {
-          const name = row.c[0] && row.c[0].v;
-          if (name) {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            staffSelect.appendChild(opt);
+        const names = rows.map(row => row.c[0] && row.c[0].v).filter(Boolean);
+        if (names.length > 0) {
+          staffSelect.setAttribute('list', 'staff-list');
+          let datalist = document.getElementById('staff-list');
+          if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = 'staff-list';
+            document.body.appendChild(datalist);
           }
-        });
+          datalist.innerHTML = names.map(n => `<option value="${n}">`).join('');
+        }
       } catch (err) {
-        staffSelect.innerHTML = '<option value="">取得に失敗しました</option>';
+        console.log('スタッフ取得失敗:', err);
       }
     });
 
@@ -181,6 +183,13 @@
     let logText = '';
 
     $startBtn.onclick = () => {
+      const clinic = document.getElementById('clinicSelect').value;
+      const staff = document.getElementById('staffSelect').value;
+      const evaluator = document.getElementById('evaluatorName').value;
+      if (!clinic) { alert('院を選択してください'); return; }
+      if (!staff) { alert('スタッフ名を入力してください'); return; }
+      if (!evaluator) { alert('評価者名を入力してください'); return; }
+
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
         $status.textContent = 'このブラウザは音声認識に対応していません。Chromeを使用してください。';
@@ -211,49 +220,7 @@
       if (rec) rec.stop();
       $startBtn.disabled = false;
       $stopBtn.disabled = true;
+      $status.textContent = '⏹ 録音停止';
 
       const clinic = document.getElementById('clinicSelect').value;
-      const staff = document.getElementById('staffSelect').value;
-      const score = document.getElementById('total-score').textContent;
-      const memo = document.getElementById('memo').value;
-      const transcript = document.getElementById('log').value;
-
-      const categoryScores = [];
-      document.querySelectorAll('.checklist-category').forEach((group, i) => {
-        const boxes = group.querySelectorAll('input[type="checkbox"]');
-        const checked = Array.from(boxes).filter(b => b.checked).length;
-        categoryScores.push(checked);
-      });
-
-      const params = new URLSearchParams({
-        clinic, staff, score, max: '41', transcript, memo,
-        categoryScores: categoryScores.join(',')
-      });
-      window.location.href = 'page2.html?' + params.toString();
-    };
-
-    const categories = [
-      { id: 0, count: 6 }, { id: 1, count: 6 }, { id: 2, count: 6 },
-      { id: 3, count: 6 }, { id: 4, count: 6 }, { id: 5, count: 7 },
-    ];
-
-    function updateScore() {
-      const checkboxGroups = document.querySelectorAll('.checklist-category');
-      let total = 0;
-      checkboxGroups.forEach((group, i) => {
-        const boxes = group.querySelectorAll('input[type="checkbox"]');
-        const checked = Array.from(boxes).filter(b => b.checked).length;
-        const max = categories[i].count;
-        total += checked;
-        document.getElementById('score-' + i).textContent = checked + '/' + max;
-        document.getElementById('bar-' + i).style.width = (checked / max * 100) + '%';
-      });
-      document.getElementById('total-score').textContent = total;
-    }
-
-    document.querySelectorAll('.checklist-category input[type="checkbox"]').forEach(cb => {
-      cb.addEventListener('change', updateScore);
-    });
-  </script>
-</body>
-</html>
+      const staff = document.getElementById('staffSelect')
