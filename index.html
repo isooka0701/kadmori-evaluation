@@ -182,45 +182,60 @@
     let rec = null;
     let logText = '';
 
-    $startBtn.onclick = () => {
-      const clinic = document.getElementById('clinicSelect').value;
-      const staff = document.getElementById('staffSelect').value;
-      const evaluator = document.getElementById('evaluatorName').value;
-      if (!clinic) { alert('院を選択してください'); return; }
-      if (!staff) { alert('スタッフ名を入力してください'); return; }
-      if (!evaluator) { alert('評価者名を入力してください'); return; }
-
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        $status.textContent = 'このブラウザは音声認識に対応していません。Chromeを使用してください。';
-        return;
-      }
-      rec = new SR();
-      rec.lang = 'ja-JP';
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.onstart = () => { $status.textContent = '🔴 録音中...'; };
-      rec.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            const text = event.results[i][0].transcript;
-            logText += new Date().toLocaleTimeString() + '\n' + text + '\n\n';
-            $log.value = logText;
-          }
-        }
-      };
-      rec.onerror = (err) => { $status.textContent = 'エラー: ' + err.error; };
-      rec.onend = () => { if (!$startBtn.disabled) return; rec.start(); };
-      rec.start();
-      $startBtn.disabled = true;
-      $stopBtn.disabled = false;
-    };
-
-    $stopBtn.onclick = () => {
+   $stopBtn.onclick = () => {
       if (rec) rec.stop();
       $startBtn.disabled = false;
       $stopBtn.disabled = true;
       $status.textContent = '⏹ 録音停止';
 
       const clinic = document.getElementById('clinicSelect').value;
-      const staff = document.getElementById('staffSelect')
+      const staff = document.getElementById('staffSelect').value;
+      const evaluator = document.getElementById('evaluatorName').value;
+      const score = document.getElementById('total-score').textContent;
+      const memo = document.getElementById('memo').value;
+      const transcript = document.getElementById('log').value;
+
+      const categoryScores = [];
+      const categoryNames = ['素直','行動スピード','振り返り・前進','継続・挑戦','キッカケづくり','凡事徹底'];
+      const categoryCounts = [6,6,6,6,6,7];
+      document.querySelectorAll('.checklist-category').forEach((group, i) => {
+        const boxes = group.querySelectorAll('input[type="checkbox"]');
+        const checked = Array.from(boxes).filter(b => b.checked).length;
+        categoryScores.push(checked);
+      });
+
+      const checklistDetail = categoryNames.map((name, i) => name + ': ' + categoryScores[i] + '/' + categoryCounts[i]).join('\n');
+
+      const params = new URLSearchParams({
+        clinic, staff, evaluator,
+        score, max: '41',
+        transcript, memo,
+        categoryScores: categoryScores.join(','),
+        checklistDetail
+      });
+      window.location.href = 'page2.html?' + params.toString();
+    };
+
+    const categories = [
+      { id: 0, count: 6 }, { id: 1, count: 6 }, { id: 2, count: 6 },
+      { id: 3, count: 6 }, { id: 4, count: 6 }, { id: 5, count: 7 },
+    ];
+
+    function updateScore() {
+      const checkboxGroups = document.querySelectorAll('.checklist-category');
+      let total = 0;
+      checkboxGroups.forEach((group, i) => {
+        const boxes = group.querySelectorAll('input[type="checkbox"]');
+        const checked = Array.from(boxes).filter(b => b.checked).length;
+        const max = categories[i].count;
+        total += checked;
+        document.getElementById('score-' + i).textContent = checked + '/' + max;
+        document.getElementById('bar-' + i).style.width = (checked / max * 100) + '%';
+      });
+      document.getElementById('total-score').textContent = total;
+    }
+
+    document.querySelectorAll('.checklist-category input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', updateScore);
+    });
+  </script>
