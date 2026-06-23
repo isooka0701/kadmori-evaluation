@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カドモリ AI人事評価 ダッシュボード</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Sans', sans-serif; background: #f9f6f2; color: #333; }
+    .app-header { padding: 14px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; background: white; position: sticky; top: 0; z-index: 10; }
+    .app-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: bold; color: #5c3d1e; }
+    .clinic-select { font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid #ddd; background: white; }
+    .main { padding: 20px; max-width: 800px; margin: 0 auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .section-label { font-size: 12px; font-weight: bold; color: #888; margin-bottom: 12px; letter-spacing: 0.05em; }
+    .staff-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: white; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+    .staff-row:hover { border-color: #5c3d1e; box-shadow: 0 2px 8px rgba(92,61,30,0.08); }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background: #f0e8de; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #5c3d1e; flex-shrink: 0; }
+    .staff-info { flex: 1; }
+    .staff-name { font-size: 15px; font-weight: bold; }
+    .staff-meta { font-size: 12px; color: #888; margin-top: 3px; }
+    .mini-bars { display: flex; flex-direction: column; gap: 4px; width: 150px; }
+    .mini-row { display: flex; align-items: center; gap: 6px; }
+    .mini-label { font-size: 10px; color: #aaa; width: 52px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mini-track { flex: 1; height: 4px; background: #f0e8de; border-radius: 2px; }
+    .mini-fill { height: 4px; border-radius: 2px; background: #7a5c3a; }
+    .mini-fill.full { background: #2d7a4f; }
+    .rank-badge { display: inline-block; font-size: 13px; font-weight: bold; padding: 4px 14px; border-radius: 20px; }
+    .rank-s { background: #d4edda; color: #155724; }
+    .rank-a { background: #d1ecf1; color: #0c5460; }
+    .rank-b { background: #fff3cd; color: #856404; }
+    .rank-c { background: #f8d7da; color: #721c24; }
+    .rank-none { background: #f0f0f0; color: #888; }
+    .arrow-icon { color: #ccc; font-size: 18px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #888; cursor: pointer; margin-bottom: 16px; padding: 6px 0; }
+    .back-btn:hover { color: #5c3d1e; }
+    .detail-hero { background: white; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+    .detail-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .avatar-lg { width: 52px; height: 52px; border-radius: 50%; background: #f0e8de; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; color: #5c3d1e; flex-shrink: 0; }
+    .score-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 1px solid #eee; color: #888; background: #fafafa; }
+    .chip.hi { border-color: #2d7a4f; color: #2d7a4f; background: #f0faf4; }
+    .chip.lo { border-color: #c0392b; color: #c0392b; background: #fdf0ef; }
+    .history-block { background: white; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+    .history-item { padding: 16px 0; border-bottom: 1px solid #f5f0eb; }
+    .history-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .history-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .history-date { font-size: 14px; font-weight: bold; color: #5c3d1e; }
+    .trend-up { font-size: 12px; color: #2d7a4f; }
+    .trend-same { font-size: 12px; color: #888; }
+    .trend-down { font-size: 12px; color: #c0392b; }
+    .ai-card { background: #fff8f3; border-radius: 10px; padding: 14px 16px; margin-top: 10px; border: 1px solid #f0e8de; }
+    .ai-label { font-size: 11px; font-weight: bold; color: #7a5c3a; margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
+    .ai-block { margin-bottom: 10px; }
+    .ai-block:last-child { margin-bottom: 0; }
+    .ai-block-title { font-size: 11px; font-weight: bold; color: #888; margin-bottom: 4px; }
+    .ai-block-text { font-size: 13px; color: #444; line-height: 1.7; white-space: pre-wrap; }
+    .action-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .action-tag { font-size: 12px; background: #e8f4fd; color: #1a6898; padding: 3px 10px; border-radius: 20px; }
+    .memo-box { border: 1px solid #eee; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 13px; color: #666; line-height: 1.7; background: #fafafa; }
+    .doc-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #7a5c3a; text-decoration: none; margin-top: 8px; }
+    .doc-link:hover { text-decoration: underline; }
+    .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+    .error-msg { text-align: center; padding: 40px; color: #c0392b; font-size: 14px; }
+    .empty-msg { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-title">
+    📊 カドモリ AI人事評価
+  </div>
+  <select class="clinic-select" id="clinicSelect" onchange="loadStaffList()">
+    <option value="大阪院">大阪院</option>
+    <option value="東京院">東京院</option>
+  </select>
+</div>
+
+<div class="main">
+  <div class="page active" id="list-page">
+    <div class="section-label" id="list-label">スタッフ一覧</div>
+    <div id="staff-list"><div class="loading">読み込み中...</div></div>
+  </div>
+
+  <div class="page" id="detail-page">
+    <div class="back-btn" onclick="showList()">← 一覧に戻る</div>
+    <div id="detail-content"><div class="loading">読み込み中...</div></div>
+  </div>
+</div>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz26ZmnrB2O9kVIndBALlOA2uCEvs1NyVF4J7IbxGazlX4hiEgeHPAfpcW4skpbpXMkNw/exec';
+
+  function getClinic() {
+    return document.getElementById('clinicSelect').value;
+  }
+
+  async function loadStaffList() {
+    const clinic = getClinic();
+    document.getElementById('list-label').textContent = clinic + ' ・ スタッフ一覧';
+    document.getElementById('staff-list').innerHTML = '<div class="loading">読み込み中...</div>';
+
+    try {
+      const res = await fetch(`${GAS_URL}?action=getStaffList&clinic=${encodeURIComponent(clinic)}`);
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        document.getElementById('staff-list').innerHTML = '<div class="empty-msg">データがありません</div>';
+        return;
+      }
+
+      document.getElementById('staff-list').innerHTML = data.map(s => {
+        const initials = s.name.length >= 2 ? s.name[0] + s.name[1] : s.name;
+        const scores = s.scores || {};
+        const cats = [
+          { label: '素直', val: scores['素直'] },
+          { label: '行動', val: scores['行動スピード'] },
+          { label: '凡事', val: scores['凡事徹底'] }
+        ];
+        const barsHtml = cats.map(c => {
+          const parts = (c.val || '0/6').split('/');
+          const pct = parts[1] ? Math.round(parseInt(parts[0]) / parseInt(parts[1]) * 100) : 0;
+          const isFull = pct === 100;
+          return `<div class="mini-row">
+            <span class="mini-label">${c.label}</span>
+            <div class="mini-track"><div class="mini-fill${isFull ? ' full' : ''}" style="width:${pct}%"></div></div>
+          </div>`;
+        }).join('');
+
+        const rankClass = getRankClass(s.totalRank);
+        const dateStr = s.date ? String(s.date).substring(0, 10) : '-';
+
+        return `<div class="staff-row" onclick="loadDetail('${s.name}')">
+          <div class="avatar">${initials}</div>
+          <div class="staff-info">
+            <div class="staff-name">${s.name}</div>
+            <div class="staff-meta">最終面談 ${dateStr} ・ 評価者：${s.evaluator || '-'}</div>
+          </div>
+          <div class="mini-bars">${barsHtml}</div>
+          <span class="rank-badge ${rankClass}">${s.totalRank || '-'}</span>
+          <span class="arrow-icon">›</span>
+        </div>`;
+      }).join('');
+
+    } catch(err) {
+      document.getElementById('staff-list').innerHTML = '<div class="error-msg">データの取得に失敗しました</div>';
+    }
+  }
+
+  async function loadDetail(staffName) {
+    const clinic = getClinic();
+    document.getElementById('list-page').classList.remove('active');
+    document.getElementById('detail-page').classList.add('active');
+    document.getElementById('detail-content').innerHTML = '<div class="loading">読み込み中...</div>';
+
+    try {
+      const res = await fetch(`${GAS_URL}?action=getStaffDetail&clinic=${encodeURIComponent(clinic)}&staff=${encodeURIComponent(staffName)}`);
+      const history = await res.json();
+
+      if (!history || history.length === 0) {
+        document.getElementById('detail-content').innerHTML = '<div class="empty-msg">データがありません</div>';
+        return;
+      }
+
+      const latest = history[0];
+      const initials = staffName.length >= 2 ? staffName[0] + staffName[1] : staffName;
+      const scores = latest.scores || {};
+
+      const chipCategories = [
+        { label: '素直', val: scores['素直'], max: 6 },
+        { label: '行動スピード', val: scores['行動スピード'], max: 6 },
+        { label: '振り返り', val: scores['振り返り前進'], max: 6 },
+        { label: '継続・挑戦', val: scores['継続挑戦'], max: 6 },
+        { label: 'キッカケ', val: scores['キッカケづくり'], max: 6 },
+        { label: '凡事徹底', val: scores['凡事徹底'], max: 7 },
+      ];
+
+      const chipsHtml = chipCategories.map(c => {
+        const parts = (c.val || '0/' + c.max).split('/');
+        const num = parseInt(parts[0]) || 0;
+        const max = parseInt(parts[1]) || c.max;
+        const isFull = num === max;
+        const isLow = num <= Math.floor(max / 3);
+        const cls = isFull ? 'chip hi' : isLow ? 'chip lo' : 'chip';
+        return `<span class="${cls}">${c.label} ${c.val || '-'}</span>`;
+      }).join('');
+
+      const historyHtml = history.map((item, idx) => {
+        const dateStr = String(item.date).substring(0, 10);
+        const prev = history[idx + 1];
+        let trendHtml = '';
+        if (prev) {
+          const currTotal = calcTotal(item.scores);
+          const prevTotal = calcTotal(prev.scores);
+          const diff = currTotal - prevTotal;
+          if (diff > 0) trendHtml = `<span class="trend-up">↑ 前回比 +${diff}</span>`;
+          else if (diff < 0) trendHtml = `<span class="trend-down">↓ 前回比 ${diff}</span>`;
+          else trendHtml = `<span class="trend-same">→ 前回と同じ</span>`;
+        }
+
+        const actionTags = item.aiAction
+          ? item.aiAction.split('\n').filter(l => l.trim().startsWith('*') || l.trim().startsWith('・') || l.trim().startsWith('-') || l.trim() !== '')
+              .slice(0, 3).map(l => `<span class="action-tag">${l.replace(/^[\*・\-\s]+/, '').substring(0, 30)}</span>`).join('')
+          : '';
+
+        return `<div class="history-item">
+          <div class="history-header">
+            <span class="history-date">${dateStr}</span>
+            <span class="rank-badge ${getRankClass(item.totalRank)}">${item.totalRank || '-'}</span>
+            ${trendHtml}
+            <span style="font-size:12px;color:#aaa;">評価者：${item.evaluator || '-'}</span>
+          </div>
+          ${item.aiSummary || item.aiGood || item.aiImprove || item.aiAction ? `
+          <div class="ai-card">
+            <div class="ai-label">🤖 AI評価</div>
+            ${item.aiSummary ? `<div class="ai-block"><div class="ai-block-title">面談要約</div><div class="ai-block-text">${item.aiSummary}</div></div>` : ''}
+            ${item.aiGood ? `<div class="ai-block"><div class="ai-block-title">良かった点</div><div class="ai-block-text">${item.aiGood}</div></div>` : ''}
+            ${item.aiAction ? `<div class="ai-block"><div class="ai-block-title">次回アクション</div><div class="action-tags">${actionTags}</div></div>` : ''}
+          </div>` : '<div style="font-size:13px;color:#aaa;margin-top:8px;">AI評価データなし（次回面談から記録されます）</div>'}
+          ${item.memo ? `<div class="memo-box">📝 ${item.memo}</div>` : ''}
+          ${item.docUrl ? `<a class="doc-link" href="${item.docUrl}" target="_blank">📄 議事録を開く</a>` : ''}
+        </div>`;
+      }).join('');
+
+      document.getElementById('detail-content').innerHTML = `
+        <div class="detail-hero">
+          <div class="detail-top">
+            <div class="avatar-lg">${initials}</div>
+            <div style="flex:1;">
+              <div style="font-size:18px;font-weight:bold;">${staffName}</div>
+              <div style="font-size:13px;color:#888;margin-top:2px;">${clinic} ・ 評価者：${latest.evaluator || '-'}</div>
+            </div>
+            <span class="rank-badge ${getRankClass(latest.totalRank)}" style="font-size:15px;padding:6px 18px;">総合 ${latest.totalRank || '-'}</span>
+          </div>
+          <div style="font-size:12px;color:#888;margin-bottom:8px;">カテゴリ別スコア（最新）</div>
+          <div class="score-chips">${chipsHtml}</div>
+        </div>
+        <div class="history-block">
+          <div class="section-label">面談履歴と定性評価</div>
+          ${historyHtml}
+        </div>`;
+
+    } catch(err) {
+      document.getElementById('detail-content').innerHTML = '<div class="error-msg">データの取得に失敗しました</div>';
+    }
+  }
+
+  function showList() {
+    document.getElementById('detail-page').classList.remove('active');
+    document.getElementById('list-page').classList.add('active');
+  }
+
+  function getRankClass(rank) {
+    if (rank === 'S') return 'rank-s';
+    if (rank === 'A') return 'rank-a';
+    if (rank === 'B') return 'rank-b';
+    if (rank === 'C') return 'rank-c';
+    return 'rank-none';
+  }
+
+  function calcTotal(scores) {
+    if (!scores) return 0;
+    return Object.values(scores).reduce((sum, v) => {
+      const parts = String(v || '0').split('/');
+      return sum + (parseInt(parts[0]) || 0);
+    }, 0);
+  }
+
+  loadStaffList();
+</script>
+</body>
+</html>
