@@ -3,185 +3,245 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>評価結果</title>
+  <title>AI定性評価システム</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Hiragino Sans', sans-serif; background: #f9f6f2; color: #333; padding: 20px; max-width: 700px; margin: 0 auto; }
     h1 { font-size: 22px; font-weight: bold; margin-bottom: 6px; }
     .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .row { display: flex; gap: 16px; margin-bottom: 24px; }
+    .row > div { flex: 1; }
+    label { font-size: 13px; font-weight: bold; display: block; margin-bottom: 6px; }
+    select, textarea, input[type="text"] { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white; }
     .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #eee; }
-    .card h2 { font-size: 16px; font-weight: bold; margin-bottom: 16px; color: #5c3d1e; }
-    .info-row { display: flex; justify-content: space-between; font-size: 14px; padding: 8px 0; border-bottom: 1px solid #f0e8de; }
-    .info-row:last-child { border-bottom: none; }
-    .info-label { color: #888; }
-    .info-value { font-weight: bold; color: #333; }
-    .category-block { padding: 16px 0; border-bottom: 1px solid #f0e8de; }
-    .category-block:last-child { border-bottom: none; }
-    .category-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .category-name { font-size: 14px; font-weight: bold; color: #5c3d1e; flex: 1; }
-    .category-score { font-size: 13px; color: #888; margin-right: 12px; }
-    .ref-badge { background: #fff8f3; border: 1px solid #f0e8de; border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: bold; color: #5c3d1e; margin-right: 8px; }
-    .rank-btns { display: flex; gap: 6px; }
-    .rank-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #ddd; background: white; font-size: 13px; font-weight: bold; cursor: pointer; color: #5c3d1e; }
-    .rank-btn.selected { background: #5c3d1e; color: white; border-color: #5c3d1e; }
-    .reason-input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; margin-top: 8px; }
-    .total-section { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-    .total-btn { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #ddd; background: white; font-size: 18px; font-weight: bold; cursor: pointer; color: #5c3d1e; }
-    .total-btn.selected { background: #5c3d1e; color: white; border-color: #5c3d1e; }
-    .btn-primary { background: #5c3d1e; color: white; border: none; border-radius: 50px; padding: 14px 32px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
+    .card h2 { font-size: 16px; font-weight: bold; margin-bottom: 16px; }
+    .checklist-category { margin-bottom: 16px; }
+    .checklist-category h3 { font-size: 14px; font-weight: bold; color: #7a5c3a; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f0e8de; }
+    .checklist-category label { font-weight: normal; font-size: 14px; display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+    .checklist-category input[type="checkbox"] { width: 16px; height: 16px; accent-color: #7a5c3a; }
+    .btn-primary { background: #5c3d1e; color: white; border: none; border-radius: 50px; padding: 14px 32px; font-size: 15px; font-weight: bold; cursor: pointer; margin-right: 10px; }
     .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    #log { width: 100%; height: 120px; border-radius: 8px; border: 1px solid #ddd; padding: 10px; font-size: 13px; background: #fafafa; }
+    #status { margin: 10px 0; font-size: 13px; color: #e74c3c; font-weight: bold; }
+    .score-bar { margin-top: 12px; background: #f0e8de; border-radius: 8px; height: 8px; }
+    .score-bar-fill { background: #5c3d1e; border-radius: 8px; height: 8px; transition: width 0.3s; }
+    .total-score { background: #fff8f3; color: #5c3d1e; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; text-align: center; border: 2px solid #f0e8de; }
+    .total-score h2 { font-size: 18px; margin-bottom: 4px; color: #7a5c3a; }
+    .total-score .score-num { font-size: 36px; font-weight: bold; color: #5c3d1e; }
+    #save-status { margin-top: 16px; font-size: 14px; font-weight: bold; text-align: center; }
   </style>
 </head>
 <body>
-  <h1>評価結果</h1>
-  <p class="subtitle">参考評価を参考に、評価者が最終評価を決定してください。</p>
+  <h1>評価AI デモ</h1>
+  <p class="subtitle">院とスタッフを選択して録音を開始してください。</p>
 
-  <div class="card">
-    <h2>面談情報</h2>
-    <div class="info-row"><span class="info-label">院</span><span class="info-value" id="clinic-name">-</span></div>
-    <div class="info-row"><span class="info-label">スタッフ</span><span class="info-value" id="staff-name">-</span></div>
-    <div class="info-row"><span class="info-label">評価者</span><span class="info-value" id="evaluator-name">-</span></div>
-    <div class="info-row"><span class="info-label">総合スコア</span><span class="info-value" id="checklist-score">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>📊 カテゴリ別評価</h2>
-    <p style="font-size:13px; color:#888; margin-bottom:16px;">参考評価を参考に、各カテゴリの評価と理由を入力してください</p>
-    <div id="category-list"></div>
-  </div>
-
-  <div class="card">
-    <h2>総合評価</h2>
-    <p style="font-size:13px; color:#888; margin-bottom:12px;">全カテゴリを踏まえた最終評価を選んでください</p>
-    <div class="total-section">
-      <button class="total-btn" onclick="selectTotal('S')">S</button>
-      <button class="total-btn" onclick="selectTotal('A')">A</button>
-      <button class="total-btn" onclick="selectTotal('B')">B</button>
-      <button class="total-btn" onclick="selectTotal('C')">C</button>
-      <button class="total-btn" onclick="selectTotal('D')">D</button>
+  <div class="row">
+    <div>
+      <label>院</label>
+      <select id="clinicSelect">
+        <option value="">選択してください</option>
+        <option value="大阪院">大阪院</option>
+        <option value="東京院">東京院</option>
+      </select>
     </div>
-    <p id="selected-total" style="text-align:center; margin-top:12px; font-size:14px; color:#7a5c3a; font-weight:bold;"></p>
-    <textarea id="manager-comment" rows="3" placeholder="総合コメントを入力（任意）" style="width:100%; margin-top:12px; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px;"></textarea>
-    <button class="btn-primary" id="saveBtn" onclick="saveResult()" disabled>この評価を保存する</button>
+    <div>
+      <label>スタッフ名</label>
+      <input type="text" id="staffName" placeholder="スタッフ名を入力">
+    </div>
+  </div>
+
+  <div style="margin-bottom: 24px;">
+    <label>評価者名</label>
+    <input type="text" id="evaluatorName" placeholder="評価者名を入力">
+  </div>
+
+  <div class="card">
+    <h2>録音</h2>
+    <div id="status"></div>
+    <div style="margin-top: 10px;">
+      <button class="btn-primary" id="startBtn">録音開始</button>
+      <button class="btn-primary" id="stopBtn" disabled>録音停止してGoogle Docsに保存</button>
+    </div>
+    <br>
+    <textarea id="log" readonly placeholder="録音を開始すると文字起こしがここに表示されます"></textarea>
+    <div id="save-status"></div>
+  </div>
+
+  <div class="total-score">
+    <h2>総合スコア</h2>
+    <div class="score-num"><span id="total-score">0</span>/41</div>
+  </div>
+
+  <div class="card">
+    <h2>チェックリスト</h2>
+    <div class="checklist-category">
+      <h3>01 素直 <span id="score-0">0/6</span></h3>
+      <div class="score-bar"><div class="score-bar-fill" id="bar-0" style="width:0%"></div></div>
+      <label><input type="checkbox"> 指摘やアドバイスを最後まで聞いている</label>
+      <label><input type="checkbox"> 指摘後、実際の行動に変化が見られる</label>
+      <label><input type="checkbox"> 言い訳や反論が先に出ていない</label>
+      <label><input type="checkbox"> 年齢や役職に関係なく学ぼうとしている</label>
+      <label><input type="checkbox"> 自分の正しさより目的・成果を優先している</label>
+      <label><input type="checkbox"> 同じ注意や指摘を繰り返されていない</label>
+    </div>
+    <div class="checklist-category">
+      <h3>02 行動スピード <span id="score-1">0/6</span></h3>
+      <div class="score-bar"><div class="score-bar-fill" id="bar-1" style="width:0%"></div></div>
+      <label><input type="checkbox"> 指示や課題に対してすぐに着手している</label>
+      <label><input type="checkbox"> 指示待ちではなく自ら仕事を取りに行っている</label>
+      <label><input type="checkbox"> 完璧を待たず、まず動いている</label>
+      <label><input type="checkbox"> 小さな判断を現場で止めずに処理している</label>
+      <label><input type="checkbox"> 忙しい時でも行動が止まらない</label>
+      <label><input type="checkbox"> 優先順位を自分で判断できている</label>
+    </div>
+    <div class="checklist-category">
+      <h3>03 振り返り・前進 <span id="score-2">0/6</span></h3>
+      <div class="score-bar"><div class="score-bar-fill" id="bar-2" style="width:0%"></div></div>
+      <label><input type="checkbox"> 結果を感情ではなく事実で受け止めている</label>
+      <label><input type="checkbox"> ミスや失敗を隠さず共有している</label>
+      <label><input type="checkbox"> 原因を人ではなく工程で捉えている</label>
+      <label><input type="checkbox"> 振り返りを次の行動に反映している</label>
+      <label><input type="checkbox"> 同じミスや指摘を繰り返していない</label>
+      <label><input type="checkbox"> 成功事例も言語化して共有している</label>
+    </div>
+    <div class="checklist-category">
+      <h3>04 継続・挑戦 <span id="score-3">0/6</span></h3>
+      <div class="score-bar"><div class="score-bar-fill" id="bar-3" style="width:0%"></div></div>
+      <label><input type="checkbox"> 決めた行動を一定期間継続している</label>
+      <label><input type="checkbox"> 成果が出ない時も行動量が極端に落ちない</label>
+      <label><input type="checkbox"> 失敗後も行動を再開している</label>
+      <label><input type="checkbox"> 新しい役割や課題に前向きに取り組んでいる</label>
+      <label><input type="checkbox"> 苦手なことから逃げずに向き合っている</label>
+      <label><input type="checkbox"> 小さな成功体験を積み重ねている</label>
+    </div>
+    <div class="checklist-category">
+      <h3>05 キッカケづくり <span id="score-4">0/6</span></h3>
+      <div class="score-bar"><div class="score-bar-fill" id="bar-4" style="width:0%"></div></div>
+      <label><input type="checkbox"> 相手の変化や反応をよく観察している</label>
+      <label><input type="checkbox"> 施術や接客に一工夫を加えている</label>
+      <label><input type="checkbox"> プラス一言・一動作が自然に出ている</label>
+      <label><input type="checkbox"> お客様や後輩の変化を喜んでいる</label>
+      <label><input type="checkbox"> 相手の立場で考えた行動ができている</label>
+      <label><input type="checkbox"> 感謝・信頼・指名・口コミにつながっている</label>
+    </div>
+    <div class="checklist-category">
+      <h3>06 凡事徹底 <span id="score-5">0/7</span></h3>
+      <div class="score-bar"><div class="score-bar-fill" id="bar-5" style="width:0%"></div></div>
+      <label><input type="checkbox"> 挨拶、返事、表情が安定している</label>
+      <label><input type="checkbox"> 身だしなみ、清潔感にムラがない</label>
+      <label><input type="checkbox"> 時間、期限、約束を守っている</label>
+      <label><input type="checkbox"> 掃除、準備、片付けが丁寧</label>
+      <label><input type="checkbox"> 報連相が抜けなく行われている</label>
+      <label><input type="checkbox"> 忙しい時ほど基本行動が崩れない</label>
+      <label><input type="checkbox"> チームや空間の空気を整えようとしている</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>面談メモ</h2>
+    <textarea id="memo" rows="4" placeholder="自由にメモを記入してください"></textarea>
   </div>
 
   <script>
-    // ★ URLの代わりにlocalStorageから取得
-    const saved = JSON.parse(localStorage.getItem('evalData') || '{}');
-    const clinic = saved.clinic || '-';
-    const staff = saved.staff || '-';
-    const evaluator = saved.evaluator || '-';
-    const score = saved.score || '0';
-    const maxScore = saved.max || '41';
-    const transcript = saved.transcript || '';
-    const memo = saved.memo || '';
-    const checklistDetail = saved.checklistDetail || '';
-    const categoryScores = (saved.categoryScores || '0,0,0,0,0,0').split(',').map(Number);
+    const $startBtn = document.getElementById('startBtn');
+    const $stopBtn = document.getElementById('stopBtn');
+    const $log = document.getElementById('log');
+    const $status = document.getElementById('status');
+    const $saveStatus = document.getElementById('save-status');
+    let rec = null;
+    let logText = '';
 
-    document.getElementById('clinic-name').textContent = clinic;
-    document.getElementById('staff-name').textContent = staff;
-    document.getElementById('evaluator-name').textContent = evaluator;
-    document.getElementById('checklist-score').textContent = score + '/' + maxScore;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(() => { console.log('マイク許可済み'); })
+      .catch(() => { console.log('マイク未許可'); });
 
-    const categories = [
-      { name: '01 素直', max: 6 },
-      { name: '02 行動スピード', max: 6 },
-      { name: '03 振り返り・前進', max: 6 },
-      { name: '04 継続・挑戦', max: 6 },
-      { name: '05 キッカケづくり', max: 6 },
-      { name: '06 凡事徹底', max: 7 },
-    ];
+    $startBtn.onclick = () => {
+      const clinic = document.getElementById('clinicSelect').value;
+      const staff = document.getElementById('staffName').value;
+      const evaluator = document.getElementById('evaluatorName').value;
+      if (!clinic) { alert('院を選択してください'); return; }
+      if (!staff) { alert('スタッフ名を入力してください'); return; }
+      if (!evaluator) { alert('評価者名を入力してください'); return; }
 
-    const managerRanks = {};
-    let selectedTotal = '';
-
-    function getAutoRank(checked, max) {
-      if (checked === max) return 'S';
-      if (checked >= max - 1) return 'A';
-      if (checked >= Math.ceil(max / 2)) return 'B';
-      return 'C';
-    }
-
-    function selectCategoryRank(index, rank) {
-      managerRanks[index] = rank;
-      document.querySelectorAll(`.rank-btn[data-index="${index}"]`).forEach(btn => {
-        btn.classList.toggle('selected', btn.dataset.rank === rank);
-      });
-      checkAllSelected();
-    }
-
-    function selectTotal(rank) {
-      selectedTotal = rank;
-      document.querySelectorAll('.total-btn').forEach(btn => {
-        btn.classList.toggle('selected', btn.textContent === rank);
-      });
-      document.getElementById('selected-total').textContent = '選択中：' + rank + '評価';
-      checkAllSelected();
-    }
-
-    function checkAllSelected() {
-      const allSelected = Object.keys(managerRanks).length === categories.length && selectedTotal;
-      document.getElementById('saveBtn').disabled = !allSelected;
-    }
-
-    const list = document.getElementById('category-list');
-    categories.forEach((cat, i) => {
-      const checked = categoryScores[i] || 0;
-      const autoRank = getAutoRank(checked, cat.max);
-      const block = document.createElement('div');
-      block.className = 'category-block';
-      block.innerHTML = `
-        <div class="category-header">
-          <span class="category-name">${cat.name}</span>
-          <span class="category-score">${checked}/${cat.max}</span>
-          <span class="ref-badge">参考: ${autoRank}</span>
-          <div class="rank-btns">
-            ${['S','A','B','C'].map(r => `
-              <button class="rank-btn" data-index="${i}" data-rank="${r}" onclick="selectCategoryRank(${i}, '${r}')">${r}</button>
-            `).join('')}
-          </div>
-        </div>
-        <input type="text" class="reason-input" id="reason-${i}" placeholder="評価理由を入力してください（任意）">
-      `;
-      list.appendChild(block);
-    });
-
-    async function saveResult() {
-      const comment = document.getElementById('manager-comment').value;
-      const categoryRanks = categories.map((_, i) => managerRanks[i] || '-').join(',');
-      const categoryReasons = categories.map((_, i) => {
-        return document.getElementById('reason-' + i).value || '';
-      }).join('|');
-
-      const data = {
-        clinic, staff, evaluator,
-        transcript, memo, checklistDetail,
-        categoryRanks,
-        categoryReasons,
-        totalRank: selectedTotal,
-        totalComment: comment
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      rec = new SR();
+      rec.lang = 'ja-JP';
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onstart = () => { $status.textContent = '🔴 録音中...'; };
+      rec.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            logText += new Date().toLocaleTimeString() + '\n' + event.results[i][0].transcript + '\n\n';
+            $log.value = logText;
+          }
+        }
       };
+      rec.onerror = (err) => { $status.textContent = 'エラー: ' + err.error; };
+      rec.onend = () => { if (!$startBtn.disabled) return; rec.start(); };
+      rec.start();
+      $startBtn.disabled = true;
+      $stopBtn.disabled = false;
+    };
 
-      document.getElementById('saveBtn').textContent = '保存中...';
-      document.getElementById('saveBtn').disabled = true;
+    $stopBtn.onclick = () => {
+      if (rec) rec.stop();
+      $startBtn.disabled = false;
+      $stopBtn.disabled = true;
+      $status.textContent = '⏹ 録音停止';
 
-      try {
-        await fetch('https://script.google.com/macros/s/AKfycbz26ZmnrB2O9kVIndBALlOA2uCEvs1NyVF4J7IbxGazlX4hiEgeHPAfpcW4skpbpXMkNw/exec', {
-          method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify(data)
-        });
-        // 保存後にlocalStorageをクリア
-        localStorage.removeItem('evalData');
-        alert('保存しました！Googleドライブとスプレッドシートをご確認ください。');
-        window.location.href = 'index.html';
-      } catch (err) {
-        alert('保存に失敗しました：' + err.message);
-      } finally {
-        document.getElementById('saveBtn').textContent = 'この評価を保存する';
-        document.getElementById('saveBtn').disabled = false;
-      }
+      const clinic = document.getElementById('clinicSelect').value;
+      const staff = document.getElementById('staffName').value;
+      const evaluator = document.getElementById('evaluatorName').value;
+      const transcript = $log.value;
+      const memo = document.getElementById('memo').value;
+
+      const categories = [6, 6, 6, 6, 6, 7];
+      const categoryScores = [];
+      document.querySelectorAll('.checklist-category').forEach((group) => {
+        const boxes = group.querySelectorAll('input[type="checkbox"]');
+        const checked = Array.from(boxes).filter(b => b.checked).length;
+        categoryScores.push(checked);
+      });
+      const totalScore = categoryScores.reduce((a, b) => a + b, 0);
+
+      const categoryNames = ['素直','行動スピード','振り返り・前進','継続・挑戦','キッカケづくり','凡事徹底'];
+      const checklistDetail = categoryNames.map((name, i) => name + ': ' + categoryScores[i] + '/' + categories[i]).join('\n');
+
+      // ★ここを変更：URLの代わりにlocalStorageに保存
+      localStorage.setItem('evalData', JSON.stringify({
+        clinic, staff, evaluator,
+        score: totalScore,
+        max: 41,
+        transcript,
+        memo,
+        categoryScores: categoryScores.join(','),
+        checklistDetail
+      }));
+
+      $saveStatus.textContent = '評価画面に移動します...';
+      $saveStatus.style.color = '#ff8f00';
+      window.location.href = 'page2.html';
+    };
+
+    const categories = [6, 6, 6, 6, 6, 7];
+    function updateScore() {
+      const checkboxGroups = document.querySelectorAll('.checklist-category');
+      let total = 0;
+      checkboxGroups.forEach((group, i) => {
+        const boxes = group.querySelectorAll('input[type="checkbox"]');
+        const checked = Array.from(boxes).filter(b => b.checked).length;
+        const max = categories[i];
+        total += checked;
+        document.getElementById('score-' + i).textContent = checked + '/' + max;
+        document.getElementById('bar-' + i).style.width = (checked / max * 100) + '%';
+      });
+      document.getElementById('total-score').textContent = total;
     }
+
+    document.querySelectorAll('.checklist-category input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', updateScore);
+    });
   </script>
 </body>
 </html>
