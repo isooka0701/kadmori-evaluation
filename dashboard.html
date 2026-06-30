@@ -3184,6 +3184,280 @@ Extract and syntax-check the embedded JS
 
 Dashboard
 コード · HTML 
+スクリーンショット 2026-06-30 11.17.13.png
+ないです
+
+11:17
+反映できていますね、見た目はきれいに出ています。デザイン自体は良さそうです。
+
+ただ「ないです」というのは、「スタッフ向け評価カードを生成」ボタンが見当たらないということでしょうか？
+
+そうであれば、理由はこの画面の状況にあります。この2026-06-23の面談には「AI評価データなし」と表示されていますよね。 今のボタンは「AI評価がある面談だけにボタンを出す」という作りにしていたので、AI評価が無いこの回には、ボタンが出ない仕様になっていました。
+
+これは実は、テストデータの特性です。前にお話しした通り、doPostの名前の行き違いを直したのがこの回より後だったので、この面談は古い保存方式のままAI評価が入っていません（次回以降の面談では入るはずです）。
+
+直し方は2つあります。
+
+① AI評価が入っている新しいテストデータで確認する（一番確実）
+② AI評価が無くても、ひとまずボタンを出せるようにする（メモなど他の情報だけでカードを作れるように）
+
+どちらで進めますか？実際の運用では今後AI評価は毎回入るはずなので、①でテストしていただくのが一番自然ですが、せっかくなのでボタン自体が正しく動くかすぐ見たい場合は②もアリです。
+
+A I評価は実際に6/23のドキュメントに入っていますが、ウェブアプリには反映されていません
+
+11:19
+これは重要な情報です。ドキュメントには入っているのに、ダッシュボードに表示されていないということは、スプレッドシート側を確認する必要があります。
+
+スプレッドシートの「大阪院」タブを開いて、6/23の行を見てください。AI要約・AI良かった点・AI改善ポイント・AI次回アクションの列（前回見た表の右側、U〜X列あたり）に、実際に文字が入っているか確認してもらえますか？
+
+可能性は2つあります。
+
+① スプレッドシートのその列も空っぽ ― 保存時に何か失敗している
+② スプレッドシートには入っているが、ダッシュボードが取得できていない ― 表示側の問題
+
+スプレッドシートのその行（AI要約などの列）を見て、文字が入っているかどうか教えてください。スクショでも大丈夫です。
+
+スクリーンショット 2026-06-30 11.20.34.png
+スプシからとってきているんんでしょうか？
+こんな欄しかないですね
+逆に議事録だと
+■ 面談日: 2026-06-23
+■ 院名: 大阪院
+■ スタッフ名: 山田花子
+■ 評価者名: 古川
+【文字起こし】
+15:27:47   15:28:45 かなこちゃん こんにちは 始めていきたいと思います お願いします お願いします じゃあ今月 先月 振り返ってみてどうだったかな そうですね やっぱり コメントにも書いた通り お客様が何を求めているのか はこうなんか分かってきたというかちゃんと見れるようになってきたんですけどそこを踏まえて なんかこう 適切な対応だったり この行動があまりできて行動にまでは移せていないのかな っていう風に感じました そうだね やっぱそこって難しいよね でもやっぱりあの前にその前の面談の時にも言ったけどあのしっかりとアドバイスを こう 反映してこう 監査 観察 というか お客様が何を求めているのかをちゃんと  15:28:58 意識できていたね そうですね まあ そこだけはちょっとやろうかなっていう風に思ったんですけどそれ以上のことができなくてそうだよね ちょっと難しいよね  15:29:19  ばっちり だと思うから なんかこう 観察 お客様が何を求めているか感じた後にこう 余裕が出てきたら あの一言 何か声をかける だったり 次の目標はそれにして 行こうか  15:29:22   15:29:25  次の目標は  15:29:32  じゃあ そうです そうだね お客様に  15:29:36   15:29:38   15:29:48 求めていらっしゃることを考えて行動 15:29:53 声援を家計  15:29:57  寝るようになる  15:30:00 とかでいいかな  15:30:05  そうですね ありがとうございます やっぱ  15:30:27 そうだねところなんだけど やっぱり新しいこう 新人さんとかも 増えてきて どう頑張れてるそうですね やっぱり自分のことで手一杯になっちゃってあまりその下の子たちにはなんかこう  15:30:33  いい先輩だと思ってもらえてるからちょっとわかんないですね  15:31:05  そうだよね ちょっとそこが難しいところだよね どんどんどんどんこう 成長していかないといけないというところでまあちゃんと自分のペース 無理せずに頑張ってくれたらいいんだけどもやっぱり下の方に行こう 僕が教えてって言う時もあると思うから その時は こう 前向きに 今できることを精一杯やることに集中してほしいなと思うから そこだけはよろしくね はい わかりました  15:31:09  そうだね  15:31:14 とは 身だしなみとかもばっちり だからこの調子で頑張っていこうか  15:31:33 分かりました じゃあ また来週来月の面談までに1つだけの目標 お客様の求めてることがわかったんだったらそこで一言 かけれるように声をかけれるように学校新人さんも増えていくので  15:31:38 気を使えるようにというか 声をかけてあげる  15:31:41 ところを意識していこうか  15:31:46 分かりました じゃあ頑張ろうね 【チェックリスト結果】
+素直: 6/6 行動スピード: 2/6 振り返り・前進: 2/6 継続・挑戦: 3/6 キッカケづくり: 2/6 凡事徹底: 7/7
+【面談メモ】
+次の目標は、お客様の求めていたっしゃることを踏まえて、一言声をかけれるようになる！ 新人さんにも声をかけてあげる
+【カテゴリ別評価】
+素直: 　理由: いい
+行動スピード: 　理由: 自分のことを精一杯頑張っている
+振り返り・前進: 　理由: 自分自身のことを適切に捉えて、次しないといけないこともしっかりと理解している
+継続・挑戦: 　理由: 今成長する時で、新人さんにも明るく元気に声をかけようという気持ちは素晴らしい
+キッカケづくり: 　理由: お客様に対して、次は声をかけて、自然にコミュニケーションが取れるといいね
+凡事徹底: 　理由: バッチリ
+【総合評価】
+評価: 
+コメント: 
+【AI評価】
+■ 面談要約（3〜5行） スタッフは、顧客が何を求めているかを理解できるようになったものの、具体的な行動に移せていない点を課題として認識しています。評価者はこの顧客理解の進捗と身だしなみの良さを評価しつつ、次のステップとして、顧客への主体的な声かけと、新人への目配り・声かけを次の目標として設定しました。自身の業務に加えて、周囲への働きかけが今後の成長ポイントとして期待されています。■ 良かった点 *   **顧客理解の向上:** 前回の面談のアドバイスをしっかりと反映し、お客様が何を求めているかを意識し、理解できるようになっている点を評価者が高く評価しています。スタッフ自身も「分かってきた」と実感しています。 *   **基本的な勤務姿勢の高さ:** 身だしなみが「ばっちり」であり、評価者チェックリストの「素直（6/6）」や「凡事徹底（7/7）」が高いことから、指示されたことを真面目にこなし、基本的な業務を丁寧に遂行する能力に優れています。  ■ 改善ポイント *   **行動への転換:** お客様のニーズを把握できるようになったものの、そこから具体的な「適切な対応」や「行動」（例：一言声をかける）に繋げる力が不足していると感じています。これは評価者チェックリストの「行動スピード」「キッカケづくり」の低評価とも一致します。 *   **主体的な行動と周囲への目配り:** 自身の業務で手一杯になり、新人へのサポートや育成まで意識が向いていない状況です。評価者からは、新人に対して前向きにできることを精一杯やることに集中してほしいと、主体的な関わりと周囲への配慮が期待されています。  ■ 次回アクション *   **顧客対応:** お客様が何を求めているか理解した上で、主体的に「一言何か声をかける」行動を実践する。 *   **新人育成:** 新人スタッフが増えている状況において、自分の業務だけでなく、積極的に新人にも声をかけ、気を配ることを意識する。
+
+こんな感じで保存されています
+
+もっと表示
+11:21
+これでバグの場所が完全に分かりました。ドキュメント（Google Docs）には完璧にAI評価が保存されています。 ということは、AI評価を「生成する」処理自体は正常に動いています。問題は、その生成されたAI評価を、スプレッドシートに書き込む手前で取り落としているということです。
+
+原因を突き止めるために、コードを見直します。
+
+
+Check the saveToGoogleDocs -> saveToSpreadsheet call chain for AI summary passing
+Check the saveToGoogleDocs -> saveToSpreadsheet call chain for AI summary passing
+saveToGoogleDocsからsaveToSpreadsheetへの引数渡しは正しく見えます。parseAISummaryの中身を見ます。
+
+
+View parseAISummary to check the regex against the actual AI text format from the document
+View parseAISummary to check the regex against the actual AI text format from the document
+見つけました。ここが原因です。
+
+parseAISummaryの正規表現は、■ 面談要約 の直後に改行(\n)があることを期待しています。しかし、実際にドキュメントに保存されているAI評価の文章を見ると、Geminiの出力はこうなっています。
+
+■ 面談要約（3〜5行） スタッフは、顧客が何を求めているかを...
+見出しと本文が、改行ではなく「スペース」でつながっている。 つまり正規表現が「見出しの後の改行」を探しているのに、実際は改行がないので、マッチに失敗して4つとも空っぽになっていた、ということです。AI自体は完璧に動いていたのに、その後の「切り分け処理」が文章の形式のブレに対応できていなかった、というのが真相です。
+
+修正します。改行があってもなくても両方に対応できる正規表現に直します。
+
+
+Fix parseAISummary regex to handle both newline-separated and space-separated heading formats from Gemini output
+Fix parseAISummary regex to handle both newline-separated and space-separated heading formats from Gemini output
+実際のテキストでテストして、正しく切り分けられるか検証します。
+
+
+Test the fixed regex against a sample matching the real Gemini output format
+Test the fixed regex against a sample matching the real Gemini output format
+完璧に切り分けられました。4つとも正しく分離できています。
+
+construct check も通すので最終ファイルを準備します。
+
+
+コマンドを実行しました, ファイルを読み取りました
+コマンドを実行しました, ファイルを読み取りました
+原因が分かりました。AI評価の生成自体は完璧に動いていました。 問題は、生成された長い文章を「面談要約」「良かった点」「改善ポイント」「次回アクション」の4つに切り分ける処理にありました。
+
+切り分け処理は「見出しの直後に改行がある」前提で書かれていたのですが、実際のGeminiの出力は「見出しのすぐ後に改行ではなくスペース」でつながる形式でした。なので、切り分けに失敗して、4つとも空のまま保存されていた、という流れです。
+
+直し方は1関数だけ、parseAISummaryという部分です（改行・スペースどちらでも対応できるようにしました）。
+
+やること
+ダウンロードしたファイルの中身を全部コピーして、GASエディタに貼り替える（前回と同じく、全文貼り替えが確実です）
+保存（Cmd+S）
+再デプロイ（デプロイを管理 → 鉛筆 → 新バージョン → デプロイ）
+ここで大事な確認
+この修正は、今後保存される面談データに対しては効きます。ただ、6/23の山田花子さんのデータは、もう（空のまま）スプレッドシートに保存済みです。これは直してもさかのぼって直りません。
+
+確認したいことが1つあります。
+
+Q: 6/23のスプレッドシートに、AI評価を手動で追記しますか？
+A: １の場合は、一旦手動でやっていって今後自動でできるようになるんですか？
+
+11:24
+はい、その理解で正解です。
+
+手動で追記するのは、あくまで「今ある6/23のデータを補完するため」の一度きりの作業です。 今回コードを直したことで、これ以降に保存される面談データは、自動でAI要約・良かった点・改善ポイント・次回アクションがちゃんと4分割されて入るようになります。手動作業は今後不要です。
+
+では、6/23の行に手動で追記しましょう。
+
+さっきドキュメントから貼ってもらった文章を、4つに分けて整理しました。スプレッドシートの「大阪院」タブ、**6/23の行（5行目あたり）**の、U・V・W・X列（AI要約・AI良かった点・AI改善ポイント・AI次回アクション）に、それぞれ貼ってください。
+
+U列（AI要約）
+
+スタッフは、顧客が何を求めているかを理解できるようになったものの、具体的な行動に移せていない点を課題として認識しています。評価者はこの顧客理解の進捗と身だしなみの良さを評価しつつ、次のステップとして、顧客への主体的な声かけと、新人への目配り・声かけを次の目標として設定しました。自身の業務に加えて、周囲への働きかけが今後の成長ポイントとして期待されています。
+V列（AI良かった点）
+
+顧客理解の向上: 前回の面談のアドバイスをしっかりと反映し、お客様が何を求めているかを意識し、理解できるようになっている点を評価者が高く評価しています。スタッフ自身も「分かってきた」と実感しています。
+基本的な勤務姿勢の高さ: 身だしなみが「ばっちり」であり、評価者チェックリストの「素直（6/6）」や「凡事徹底（7/7）」が高いことから、指示されたことを真面目にこなし、基本的な業務を丁寧に遂行する能力に優れています。
+W列（AI改善ポイント）
+
+行動への転換: お客様のニーズを把握できるようになったものの、そこから具体的な「適切な対応」や「行動」（例：一言声をかける）に繋げる力が不足していると感じています。これは評価者チェックリストの「行動スピード」「キッカケづくり」の低評価とも一致します。
+主体的な行動と周囲への目配り: 自身の業務で手一杯になり、新人へのサポートや育成まで意識が向いていない状況です。評価者からは、新人に対して前向きにできることを精一杯やることに集中してほしいと、主体的な関わりと周囲への配慮が期待されています。
+X列（AI次回アクション）
+
+顧客対応: お客様が何を求めているか理解した上で、主体的に「一言何か声をかける」行動を実践する。
+新人育成: 新人スタッフが増えている状況において、自分の業務だけでなく、積極的に新人にも声をかけ、気を配ることを意識する。
+貼り終わったら、ダッシュボードの該当ページを再読み込みして、AI評価が表示されるか確認してみてください。表示されたら、「スタッフ向け評価カードを生成」ボタンも試せます。
+
+スクリーンショット 2026-06-30 11.27.10.png
+こんなふうに二段なってもいいんですか？
+
+11:27
+スクショ確認しました。結論：これで大丈夫です。問題ありません。
+
+スプレッドシートのセルには、改行を含んだ長い文章を1つのセルにそのまま入れられます。見た目が「2段」に見えているのは、セルの幅が狭くて自動的に折り返し表示されているだけで、データとしては1つのセルに1つの文章が正しく入っている状態です。
+
+これはダッシュボード側の表示にも影響しません。ダッシュボードはこのセルの中身をそのまま読み取って、AI評価カードのデザインの中で綴り直して表示するので、スプレッドシート上の見た目の折れ方は関係ありません。
+
+このまま、残りの列（改善ポイント・次回アクション）も貼り進めてもらって大丈夫です。貼り終わったら、ダッシュボードを再読み込みして表示を確認してみてください。
+
+スタッフ向け評価カードのUIを改善していきたいです
+今の時点では文字だけで、シンプルすぎて、見る気にも慣れないかなと思います
+なのでもっと絵を増やすとか、デザインにこだわるとか、未見やすいU Iが作れたらいいなと思います
+
+11:32
+今の評価カードは情報は正しいけど「文字の塊」感が強くて、スタッフが見たときの嬉しさやワクワクが足りない、ということですね。よく分かります。LINEで届いた1枚画像で気持ちが上がるかどうかは、デザインの力が大きいです。
+
+進める前に、方向性を決めたいです。サロン業界で働く人たちに向けたカードとして、どんな雰囲気が合いそうか教えてください。
+
+Q: スタッフ向けカード、どんな雰囲気が一番合いそうですか？
+A: わからない、何がいいんだとう
+
+11:34
+いいですね、一緒に決めましょう。少し具体的に考えてみます。
+
+このカードを受け取るのは、サロンで接客をしているスタッフです。月1回、評価者から「今月のあなたへ」というメッセージが届く、という体験です。送るタイミングは「励まし」の場面なので、重すぎず、でも安っぽくもないものが合いそうです。
+
+3つの方向性、それぞれの特徴をもう少し具体的にお話しします。
+
+①温かみ・可愛らしさ ― クリーム色や淡いピンクなど柔らかい色合いに、手書き風のアイコンや小さなイラスト（花、リボンなど）を添える方向。受け取って「ほっとする」「嬉しい」と感じやすいテイストです。美容系のSNSやノベルティでよく見る雰囲気に近いです。
+
+②高級感・サロンらしい上質さ ― 黒や深いボルドーにゴールドのライン、上質な明朝体。今のダッシュボード本体（テラコッタ×明朝体）の延長線にある方向。「あなたはプロフェッショナルである」という敬意を込めたテイストです。
+
+③元気・ポップ ― 鮮やかな色、丸みのあるフォント、絵文字的な要素。「今月もお疲れ様！」という勢いのあるテイストです。テンションは上がりますが、年齢層や社風によっては少しカジュアルすぎる可能性もあります。
+
+私のおすすめは、①の温かみ・可愛らしさです。理由は、このカードの目的が「評価を伝える」だけでなく「次も頑張ろうと思ってもらう」ことだからです。①は柔らかさがあるので、改善ポイントが含まれていても受け取りやすく、サロン業界（美容・接客）の世界観にも自然に馴染みます。②は格好良いですが少し硬く、③は元気だけど場合によって浮いてしまう可能性があります。
+
+この方向性（①温かみ・可愛らしさ）で進めてみてよいですか？それとも、実際に2パターンくらい作って見比べてから決めたいですか？
+
+はい
+
+11:34
+では「①温かみ・可愛らしさ」の方向で、実際にデザインして作ってみます。
+
+具体的には、淡いピンクとクリーム色を基調に、手描き風の小さなイラスト（花・リボン・キラキラなど）を添えて、見た瞬間に「ほっ」とできるカードにします。文字も、本文を読みやすく、見出しに丸みのある手書き風の要素を加えます。
+
+このガイドはClaude側のウィジェット規約なので、今回作る**実際のスタンドアロンHTMLファイル（GitHub Pages用）**には直接当てはまりません。スタンドアロンファイルとして、温かみ・可愛らしさのテイストで独自にデザインします。
+
+具体的な要素を決めます。インラインSVGで小さなイラスト（花・キラキラ・リボン）を手描き風に描き、カラーは淡いピンク・クリーム・サンドベージュを基調にします。
+
+
+View the current staff-card CSS and JS to redesign it
+View the current staff-card CSS and JS to redesign it
+カードのCSSとHTML生成部分を見つけて、新しいデザインに丸ごと差し替えます。
+
+
+コマンドを実行しました, ファイルを表示しました
+コマンドを実行しました, ファイルを表示しました
+このCSSブロックを、可愛らしいテイストに全面差し替えします。
+
+
+Replace staff-card CSS with a warm, cute illustrated design (soft pink/cream palette, decorative blobs, rounded sections)
+Replace staff-card CSS with a warm, cute illustrated design (soft pink/cream palette, decorative blobs, rounded sections)
+次に、generateStaffCard関数のHTML生成部分を、新デザイン用に差し替えます。手描き風アイコン（花・キラキラ・吹き出し）をインラインSVGで用意します。
+
+
+2個のファイルを表示しました
+2個のファイルを表示しました
+ここを丸ごと、可愛らしいイラスト入りのデザインに差し替えます。各セクションに専用アイコン（花・キラキラ・矢印）、背景に手描き風の装飾を追加します。
+
+
+Replace generateStaffCard with the cute illustrated design, adding inline SVG decorations and per-section icons
+Replace generateStaffCard with the cute illustrated design, adding inline SVG decorations and per-section icons
+構文を確認します。
+
+
+Re-extract and syntax-check the embedded JS after the redesign
+Re-extract and syntax-check the embedded JS after the redesign
+構文は問題ありません。完成したファイルを共有します。
+
+
+コマンドを実行しました, ファイルを読み取りました
+コマンドを実行しました, ファイルを読み取りました
+スタッフ向け評価カードを、温かみ・可愛らしさのデザインに作り直しました。変えたポイントです。
+
+背景に手描き風の装飾 ― カードの上部に小さな花のイラストとキラキラ、下部にふわふわした雲のような形を、淡いピンク色で添えました。文字だけだった画面に、視覚的な「やわらかさ」が加わります。
+
+見出しを言葉から変更 ― 「面談要約」「良かった点」「次回アクション」という事務的な言葉を、「今月のあなたへ」「よかったところ」「次にやってみよう」に変えました。受け取った人が、評価ではなく「メッセージ」として読めるようにしています。
+
+各項目にアイコンを追加 ― チェックマーク・お花・矢印の小さな丸いアイコンを、それぞれの内容に合わせて添えました。
+
+「1on1だより」というバッジ ― 院名の横に小さなピンクのバッジを置き、お便りのような親しみやすい雰囲気を出しています。
+
+全体の色味 ― クリームがかったピンク（
+#FDF4F0）を基調に、アクセントはやわらかいコーラル色に統一しました。
+
+ファイルを確認して、見た目をチェックしてみてください。気に入ったら、前回と同じ流れでGitHubのdashboard.htmlを置き換えれば反映されます。
+
+直したいところ（色味、アイコンの種類、文言など）があれば、遠慮なく教えてください。
+
+
+Dashboard
+コード · HTML 
+まあ一旦こんな感じでいいかも
+このコードはGitHubに移し替えるのが正解ですか？
+
+11:38
+はい、それが正解です。GitHubに置いてあるファイルが、実際にスタッフや評価者が見ている本番の画面なので、そこを置き換えないと反映されません。
+
+やり方は前回と同じく、どちらでもOKです。
+
+方法A：GitHub上で直接貼り替える
+
+GitHubでdashboard.htmlのファイルページを開く
+鉛筆マーク（編集）をクリック
+中身を全部選択して削除
+ダウンロードしたファイルの中身を全部コピーして貼り付ける
+一番下の「Commit changes」を押す
+方法B：ファイルをアップロードして上書き
+
+さっきダウンロードしたdashboard.htmlをそのまま使う
+GitHubのリポジトリページで、既存のdashboard.htmlを一度削除
+ダウンロードしたファイルをドラッグ&ドロップでアップロード
+「Commit changes」を押す
+content（コードの中身）が長いファイルなので、コピペで切れるリスクを避けたいなら**方法B（アップロード）**が確実です。
+
+反映したら、実際の画面で「スタッフ向け評価カードを生成」ボタンを押して、デザインがちゃんと表示されるか確認してみてください。
+
+
 
 
 
@@ -3586,59 +3860,99 @@ Dashboard · HTML
  
     .staff-card {
       width: 100%;
-      background: linear-gradient(135deg, #FBF7F1, #F3E8DC);
-      border-radius: 16px;
-      padding: 28px 24px;
+      position: relative;
+      overflow: hidden;
+      background: #FDF4F0;
+      border-radius: 22px;
+      padding: 32px 26px 28px;
       font-family: 'Noto Sans JP', sans-serif;
-      color: var(--ink);
+      color: #6B4A42;
+    }
+    .staff-card .sc-deco {
+      position: absolute;
+      pointer-events: none;
     }
     .staff-card-header {
+      position: relative;
       text-align: center;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
+      z-index: 1;
     }
-    .staff-card-header .sc-clinic {
+    .staff-card-header .sc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #FCE4DE;
+      color: #C2624C;
       font-size: 11px;
-      color: var(--accent-deep);
-      letter-spacing: 0.1em;
       font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 12px;
     }
     .staff-card-header .sc-name {
       font-family: 'Noto Serif JP', serif;
-      font-size: 22px;
+      font-size: 23px;
       font-weight: 700;
-      margin-top: 6px;
+      color: #5C3D35;
     }
     .staff-card-header .sc-date {
       font-size: 12px;
-      color: var(--ink-faint);
-      margin-top: 4px;
+      color: #BC9088;
+      margin-top: 5px;
+    }
+    .staff-card-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 18px 0;
+      z-index: 1;
+      position: relative;
+    }
+    .staff-card-divider .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #E8B8AC;
     }
     .staff-card-section {
-      background: rgba(255,255,255,0.65);
-      border-radius: 12px;
-      padding: 16px 18px;
+      position: relative;
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 16px 18px 16px 50px;
       margin-bottom: 12px;
+      z-index: 1;
+      box-shadow: 0 2px 0 rgba(194, 98, 76, 0.04);
     }
-    .staff-card-section:last-child { margin-bottom: 0; }
+    .staff-card-section:last-of-type { margin-bottom: 0; }
+    .staff-card-section .sc-icon {
+      position: absolute;
+      left: 14px;
+      top: 16px;
+      width: 26px;
+      height: 26px;
+    }
     .staff-card-section .sc-label {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
-      color: var(--accent-deep);
-      margin-bottom: 8px;
-      letter-spacing: 0.04em;
+      color: #C2624C;
+      margin-bottom: 6px;
     }
     .staff-card-section .sc-text {
-      font-size: 14px;
-      line-height: 1.8;
-      color: var(--ink);
+      font-size: 13.5px;
+      line-height: 1.85;
+      color: #5C4A45;
       white-space: pre-wrap;
     }
     .staff-card-footer {
+      position: relative;
       text-align: center;
-      margin-top: 20px;
+      margin-top: 22px;
       font-size: 10px;
-      color: var(--ink-faint);
-      letter-spacing: 0.05em;
+      color: #D2A89E;
+      letter-spacing: 0.08em;
+      z-index: 1;
     }
  
     .loading, .error-msg, .empty-msg {
@@ -3871,6 +4185,32 @@ Dashboard · HTML
     }, 0);
   }
  
+  const SC_ICONS = {
+    summary: `<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="11" fill="#FCEAE5"/><path d="M9 13.5l2.4 2.4L17 10" stroke="#E8907A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    good: `<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="11" fill="#FCEAE5"/><path d="M13 7.5c.6 1.6 1.1 2.4 2.6 3 1.5.6 2.4 1 2.4 1s-.9.4-2.4 1c-1.5.6-2 1.4-2.6 3-.6-1.6-1.1-2.4-2.6-3-1.5-.6-2.4-1-2.4-1s.9-.4 2.4-1c1.5-.6 2-1.4 2.6-3z" fill="#E8907A"/></svg>`,
+    action: `<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="11" fill="#FCEAE5"/><path d="M9.5 8.5c2.2 0 4.5 1.6 4.5 4.5s-2.3 4.5-4.5 4.5" stroke="#E8907A" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M12 15.2l2 2.3-2 2.3" stroke="#E8907A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`
+  };
+ 
+  function scTopDecor() {
+    return `
+      <svg class="sc-deco" viewBox="0 0 80 80" width="70" height="70" style="top:-14px; left:-14px;" fill="none">
+        <circle cx="40" cy="40" r="34" fill="#FCEAE5"/>
+        <path d="M40 22c1.6 4.4 3 6.6 7.2 8.2C51.4 31.8 54 33 54 33s-2.6 1.2-6.8 2.8C43 37.4 41.6 39.6 40 44c-1.6-4.4-3-6.6-7.2-8.2C28.6 34.2 26 33 26 33s2.6-1.2 6.8-2.8C37 28.6 38.4 26.4 40 22z" fill="#F7C9BC"/>
+      </svg>
+      <svg class="sc-deco" viewBox="0 0 60 60" width="46" height="46" style="top:6px; right:-8px;" fill="none">
+        <circle cx="30" cy="30" r="3" fill="#F0A793"/>
+        <circle cx="14" cy="44" r="2" fill="#F0A793"/>
+        <circle cx="46" cy="16" r="2.2" fill="#F0A793"/>
+      </svg>`;
+  }
+ 
+  function scBottomDecor() {
+    return `
+      <svg class="sc-deco" viewBox="0 0 90 70" width="76" height="60" style="bottom:-10px; right:-12px;" fill="none">
+        <path d="M70 60c8-2 12-9 10-16-2-7-9-10-15-7-3-9-12-14-20-10-7 3-10 11-7 18-7 1-12 7-11 14 1 7 8 11 15 9 3 6 10 9 16 6 5-2 8-8 7-13" fill="#FBE0D8"/>
+      </svg>`;
+  }
+ 
   function generateStaffCard(idx) {
     const item = window.__currentHistory[idx];
     const staffName = window.__currentStaffName;
@@ -3878,24 +4218,28 @@ Dashboard · HTML
     const dateStr = String(item.date).substring(0, 10);
  
     const sections = [];
-    if (item.aiSummary) sections.push({ label: '今月の振り返り', text: item.aiSummary });
-    if (item.aiGood) sections.push({ label: '良かった点', text: item.aiGood });
-    if (item.aiAction) sections.push({ label: '次のアクション', text: item.aiAction });
+    if (item.aiSummary) sections.push({ label: '今月のあなたへ', text: item.aiSummary, icon: SC_ICONS.summary });
+    if (item.aiGood) sections.push({ label: 'よかったところ', text: item.aiGood, icon: SC_ICONS.good });
+    if (item.aiAction) sections.push({ label: '次にやってみよう', text: item.aiAction, icon: SC_ICONS.action });
  
     const sectionsHtml = sections.map(s => `
       <div class="staff-card-section">
+        <div class="sc-icon">${s.icon}</div>
         <div class="sc-label">${s.label}</div>
         <div class="sc-text">${s.text}</div>
       </div>`).join('');
  
     const cardHtml = `
       <div class="staff-card" id="staffCardForExport">
+        ${scTopDecor()}
         <div class="staff-card-header">
-          <div class="sc-clinic">${clinic}</div>
+          <span class="sc-badge">${clinic} ・ 1on1だより</span>
           <div class="sc-name">${staffName} さん</div>
-          <div class="sc-date">${dateStr} の面談より</div>
+          <div class="sc-date">${dateStr} の面談から</div>
         </div>
+        <div class="staff-card-divider"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
         ${sectionsHtml}
+        ${scBottomDecor()}
         <div class="staff-card-footer">カドモリ AI人事評価</div>
       </div>`;
  
