@@ -1,192 +1,3569 @@
+
+/
+Claudeが応答を完了しました
+ウェブアプリを作りたいと前回行っていたと思うのですが、どうなりましたか？
+
+6月25日
+
+前回の進捗を整理し、次のステップを提案した。
+前回の進捗を整理し、次のステップを提案した。
+前回（6/23）までで、ウェブアプリはかなり形になっています。整理するとこんな状況です。
+
+完成して動いているもの
+
+評価アプリ本体（https://rkitaoka-blip.github.io/kadmori-evaluation/）
+　録音 → 文字起こし → チェックリスト → 評価入力 → Google Docs／スプレッドシートに自動保存、という流れが一通り動いています
+AI評価のテキスト（面談要約・良かった点・改善ポイント・次回アクション）もスプレッドシートに保存されるようになりました
+前回いちばん力を入れたもの
+
+dashboard.html（評価ダッシュボード）を新しく作って、GitHubにコミットしました
+　- スタッフ一覧ビュー（スコアバーとランクバッジ付き）
+　- スタッフごとの詳細ビュー（過去の評価履歴が見られる）
+ただ、最後に止まっていた点
+セッションの終わりで、ダッシュボードを開こうとしたら 404エラー が出ていました。これはGitHub Pagesへの反映待ち（数分〜十数分かかることがある）の可能性が高い、というところで前回は終わっています。
+
+残っている課題
+
+ダッシュボードが今ちゃんと開けるかの確認（404が消えているか）
+LINE通知システムの構築（月次の評価結果をスタッフ個人に送る機能）
+まず手始めに、ダッシュボードが今は開けるようになっているか確認しますか？以下のURLをブラウザ（できればシークレットモード）で開いてみてください。
+
+https://rkitaoka-blip.github.io/kadmori-evaluation/dashboard.html
+開けたか、まだ404が出るか、教えてもらえれば次に進めます。
+
+できていましたが、結果が反映されていないようです
+東京院の名前が載っていなかったり、なんかモック感が否めないです
+
+6月25日
+
+ダッシュボードのコードを検証してモックデータを確認する必要がある。
+ダッシュボードのコードを検証してモックデータを確認する必要がある。
+実際のダッシュボードのコードを確認してみますね。モックデータ（仮の表示用データ）がそのまま残っているのか、スプレッドシートから実データを取りに行く部分がうまく動いていないのか、中身を見れば原因がわかります。
+
+
+GASエンドポイントを直接検証して、データ取得の問題を診断した。
+GASエンドポイントを直接検証して、データ取得の問題を診断した。
+ダッシュボード自体はモックではなく、ちゃんとスプレッドシートから実データを取りに行く作りになっています（getStaffList・getStaffDetail というリクエストをGASに投げています）。なので「モック感」「東京院の名前が出ない」の原因は、GAS側がそのリクエストにまだ対応できていないか、スプレッドシートの東京院タブにデータが入っていないかのどちらかの可能性が高いです。
+
+実際に東京院のデータが返ってくるか、GASのエンドポイントを直接叩いて確認してみます。
+
+
+web_fetchの制約を回避し、GitHubリポジトリを確認する戦略を立案した。
+web_fetchの制約を回避し、GitHubリポジトリを確認する戦略を立案した。
+GASのエンドポイントは直接叩けないので、リポジトリ側にGASのコード（.gsファイル）が入っているか確認して、getStaffList/getStaffDetailに対応しているかをチェックします。
+
+
+診断のため画面状態を確認する戦略を検討した。
+診断のため画面状態を確認する戦略を検討した。
+ダッシュボードのコードを見た範囲では、仮データ（モック）は埋め込まれていませんでした。スタッフ名・スコア・ランク・AI評価コメントはすべて、スプレッドシートから実データを取りに行く作りになっています。
+
+なので「モック感がある」「東京院の名前が出ない」という見え方には、いくつか原因が考えられます。いちばんありそうなのは次の2つです。
+
+ひとつは、東京院のスプレッドシートにまだ面談データが入っていないケース。東京院の1on1をまだ保存していなければ、当然名前は出ません（これは故障ではなく、単にデータが無いだけ）。
+
+もうひとつは、GAS側（保存・取得のプログラム）の最新版がデプロイに反映されていないケース。前回ダッシュボード用にGASを更新しましたが、「デプロイ」を新しく押し直していないと、古いプログラムが動いたままになり、データがうまく返ってこないことがあります。
+
+切り分けたいので、今の画面の状態を教えてください。
+
+スクリーンショット 2026-06-25 15.19.28.png
+6月25日
+
+Diagnosed root cause of mock-like appearance in dashboard interface
+Diagnosed root cause of mock-like appearance in dashboard interface
+スクショで原因がかなりはっきりしました。ありがとうございます。
+
+見ると、こうなっています。
+
+名前は出ている（テスト太郎・山田花子・山田 花子）✅
+最終面談日も出ている（6/10・6/22・6/15）✅
+評価者も出ている（古川さん）✅
+でも、素直・行動・凡事の3本のバーが全部空っぽ ❌
+右側の総合ランクも全部「-」 ❌
+つまり「モック感」の正体はこれです。名前や日付は取れているのに、肝心の“点数”と“ランク”だけが空っぽだから、中身の入っていない作りかけのように見えているんです。逆に言うと、データの取得自体は動いています（名前・日付・評価者は実データ）。
+
+なので問題は1点に絞られます ―― チェックリストの点数と総合ランクが、ダッシュボードまで届いていない。
+
+これには大きく2つの可能性があります。
+
+ひとつは、そもそもスプレッドシートに点数が保存されていない（=保存する側の問題）。もうひとつは、スプレッドシートには点数が入っているのに、ダッシュボードがそれを読み取れていない（=取得する側／GASの問題）。
+
+どっちかを確かめるのが次の一手です。スプレッドシートを直接見て、点数が入っているか確認しましょう。
+
+下のリンクを開いてください（あなたのGoogleアカウントで開けます）。
+
+https://docs.google.com/spreadsheets/d/1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4/edit
+開いたら、「大阪院」タブを見て、次の2つを教えてください。
+
+チェックリストの点数の列（素直・行動スピード…などの点数）に、実際に数字（例：4/6 や 5 など）が入っているか
+「総合評価」や「総合ランク」の列に、S/A/B/C のような文字が入っているか
+数字が入っているなら取得側（GAS）の修正、空っぽなら保存側の修正、と進め方が決まります。スプレッドシートの該当部分のスクショを送ってもらえれば、こちらで列の状態を見て直接判断します。
+
+ドキュメントから繋げて、ウェブアプリに移すことはできないですかね？
+
+6月25日
+
+Weighed technical feasibility against practical implementation efficiency
+Weighed technical feasibility against practical implementation efficiency
+「Google Docs（面談ごとの記録ドキュメント）から繋げて、ダッシュボードに表示できないか」という発想ですよね。気持ちはすごくよくわかります。ただ、結論から言うと おすすめしません。理由を説明しますね。
+
+Google Docsは「文章」なので、点数（4/6 みたいな数字）やランク（A・B）を機械的に正確に抜き出すのが苦手です。少しでも書き方がズレると拾えなくなり、かえって不安定になります。一方スプレッドシートは表（マス目）なので、「この列が素直の点数」とハッキリ決まっていて、点数の表示にはこっちが圧倒的に向いています。
+
+そして大事なのは、今の問題は「点数だけが届いていない」一点だということです。名前・日付・評価者はちゃんと出ているので、配線のほとんどは繋がっています。点数の通り道だけが切れている状態なので、そこを直すのが一番の近道です。Docs方式に切り替えても、結局「点数を抜き出す処理」を新しく作る必要があって、遠回りになります。
+
+どこで点数が切れているのか、こちらで実際のコードを確認してみます。
+
+
+スプレッドシート確認を優先し、データ流通経路を診断した。
+スプレッドシート確認を優先し、データ流通経路を診断した。
+コードを追ってみたところ、原因の見当がつきました。少し専門的になりますが、噛み砕いて説明します。
+
+評価ページ（保存ボタンを押す画面）が送っているデータを見ると、こうなっています。
+
+各カテゴリのランク（A・B など）→ 送っている
+総合ランク・コメント → 送っている
+点数の数字 → 「素直: 4/6, 行動: 5/6 …」と全部まとめた1本のテキストとしては送っているが、「素直＝4/6」「行動＝5/6」とバラバラの形では送っていない
+一方、ダッシュボードが表示に使いたいのは、まさにこの 「バラバラの点数」 なんです。送っている形と、表示したい形が噛み合っていない。これが、バーが全部空っぽ＝モック感の有力な原因です。総合ランクが「-」なのも、同じ通り道のどこかで途切れているサインです。
+
+ここから先、保存側を直すのか取得側を直すのかを決めるために、スプレッドシートの中身を1回だけ確認させてください。これが決め手になります。
+
+下のリンクを開いてください（あなたのGoogleアカウントで開けます）。
+
+https://docs.google.com/spreadsheets/d/1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4/edit
+開いたら 「大阪院」タブ を表示して、そのままスクショを撮って送ってください。横に長ければ、点数やランクが入っていそうな右側の列まで見える範囲で大丈夫です。
+
+それを見れば、
+
+点数の数字が空 → 保存側（GAS）を直す
+数字は入っているのにダッシュボードに出ない → 取得側（GAS）を直す
+のどちらかが確定して、次に直すコードを全文で用意できます。
+
+スクリーンショット 2026-06-25 15.27.09.png
+6月25日
+
+Diagnosed data storage success and pinpointed retrieval system failure
+Diagnosed data storage success and pinpointed retrieval system failure
+スクショ、すごく助かりました。これで原因が完全に確定しました。そして、いい知らせです。
+
+点数もランクも、ちゃんとスプレッドシートに入っています。
+
+E〜J列（素直・行動スピード・振り返り…凡事徹底）に、5/6・4/6・7/7 といった点数がしっかり記録されている ✅
+その右の列に S・A・B・C のランクも入っている ✅
+日付・院名・スタッフ名・評価者も揃っている ✅
+つまり、保存する仕組みは完璧に動いています。データは全部ここに集まっているんです。
+
+ということは、問題は1か所だけに絞られました。ダッシュボードがこのスプレッドシートからデータを「取り出して表示する」部分です。データは棚にちゃんと並んでいるのに、ダッシュボードがそれを取りに行く手順を知らない（か、棚の場所を間違えている）状態です。
+
+直すのは保存側ではなく、取り出し側（GASのプログラム）だけ。保存の仕組みは触らないので安心してください。
+
+直すために、今のGASのコードを見せてください。ここからは1ステップずつ進めます。
+
+ステップ1：GASエディタを開く
+
+下のリンクを開いてください。
+
+https://script.google.com/d/1f4opvAFqfWWoXfIR6CG6CbP830fyw2B8-6MSGBHoG13ImXUc43nczu4B/edit
+開けたら、コードが書かれた画面（コード.gs または 無題.gs）の中身を 全部コピーして、ここに貼り付けて ください。
+
+今のコードを見れば、「どの列をどう読めばダッシュボードに点数が出るか」がわかるので、修正版を**全文（コピペするだけの形）**で用意します。
+
+
+const SPREADSHEET_ID = '1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4'; function doGet(e) { const action = e.parameter.action; if (action === 'getStaffList') { return getStaffList(e.parameter.clinic); } if (action === 'getStaffDetail') { return getStaffDetail(e.parameter.clinic, e
+
+pasted
+
+6月25日
+
+Diagnosed spreadsheet column misalignment and data type conversion issues
+Diagnosed spreadsheet column misalignment and data type conversion issues
+GASのコード、ありがとうございます。これで原因が完全に特定できました。
+
+結論から言うと、犯人は「点数」です。スプレッドシートに 5/6 4/6 と入れていますよね。Googleスプレッドシートは、この 5/6 を「5月6日」という“日付”だと勝手に勘違いしてしまうんです。
+
+すると、ダッシュボードが点数を取りに行ったとき、5/6（点数）ではなく 2026-05-06（日付データ）が返ってきてしまい、「これは点数の形じゃない」と判断してバーを空っぽにしてしまう。これが「モック感」の正体です。スプレッドシート上は 5/6 と見えていても、中身が日付に化けている、というのがポイントです。
+
+直し方はシンプルで、**「中身ではなく、画面に見えているそのままの文字（＝5/6）を読む」**ようにGASを変えるだけです。保存の仕組みは一切触りません。
+
+修正版を作ったので確認します。
+
+
+Unable to provide summary - no user prompt detected
+Unable to provide summary - no user prompt detected
+構文チェックも通りました。安心して貼り替えられます。
+
+変更したのはたった2か所だけです（点数を読み取る関数を「画面に見えている文字そのままを読む」方式に変更）。保存の仕組みやAI評価の部分は一切いじっていません。
+
+では進めましょう。1ステップずついきます。
+
+ステップ1：GASエディタを開く
+
+https://script.google.com/d/1f4opvAFqfWWoXfIR6CG6CbP830fyw2B8-6MSGBHoG13ImXUc43nczu4B/edit
+ステップ2：今のコードを全部消して、下のコードを全部貼り付ける
+
+エディタの中身を全選択（Cmd+A）→ 削除 → 下のコードをまるごと貼り付けてください。
+
+javascript
+const SPREADSHEET_ID = '1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4';
+
+function doGet(e) {
+  const action = e.parameter.action;
+  
+  if (action === 'getStaffList') {
+    return getStaffList(e.parameter.clinic);
+  }
+  if (action === 'getStaffDetail') {
+    return getStaffDetail(e.parameter.clinic, e.parameter.staff);
+  }
+  
+  return HtmlService.createTemplateFromFile('index')
+    .evaluate()
+    .setTitle('カドモリ 1on1評価システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getStaffList(clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  const data = sheet.getDataRange().getDisplayValues();
+  const staffMap = {};
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const staffName = row[2];
+    if (!staffName) continue;
+    
+    if (!staffMap[staffName] || row[0] > staffMap[staffName].date) {
+      staffMap[staffName] = {
+        name: staffName,
+        clinic: row[1],
+        evaluator: row[3],
+        date: row[0],
+        scores: {
+          素直: row[4],
+          行動スピード: row[5],
+          振り返り前進: row[6],
+          継続挑戦: row[7],
+          キッカケづくり: row[8],
+          凡事徹底: row[9]
+        },
+        totalRank: row[16],
+        totalComment: row[17]
+      };
+    }
+  }
+  
+  const result = Object.values(staffMap);
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getStaffDetail(clinic, staff) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  const data = sheet.getDataRange().getDisplayValues();
+  const history = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[2] !== staff) continue;
+    
+    history.push({
+      date: row[0],
+      clinic: row[1],
+      evaluator: row[3],
+      scores: {
+        素直: row[4],
+        行動スピード: row[5],
+        振り返り前進: row[6],
+        継続挑戦: row[7],
+        キッカケづくり: row[8],
+        凡事徹底: row[9]
+      },
+      categoryRanks: {
+        素直: row[10],
+        行動スピード: row[11],
+        振り返り前進: row[12],
+        継続挑戦: row[13],
+        キッカケづくり: row[14],
+        凡事徹底: row[15]
+      },
+      totalRank: row[16],
+      totalComment: row[17],
+      memo: row[18],
+      docUrl: row[19],
+      aiSummary: row[20] || '',
+      aiGood: row[21] || '',
+      aiImprove: row[22] || '',
+      aiAction: row[23] || ''
+    });
+  }
+  
+  history.sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  return ContentService.createTextOutput(JSON.stringify(history))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveToGoogleDocs(clinic, staffName, transcript, checklist, memo, evaluator, categoryRanks, categoryReasons, totalRank, totalComment, aiSummary) {
+  const date = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  const fileName = clinic + '_' + staffName + '_' + date;
+  
+  const rootFolderName = 'カドモリ1on1記録';
+  let rootFolder;
+  const rootFolders = DriveApp.getFoldersByName(rootFolderName);
+  if (rootFolders.hasNext()) {
+    rootFolder = rootFolders.next();
+  } else {
+    rootFolder = DriveApp.createFolder(rootFolderName);
+  }
+
+  let clinicFolder;
+  const clinicFolders = rootFolder.getFoldersByName(clinic);
+  if (clinicFolders.hasNext()) {
+    clinicFolder = clinicFolders.next();
+  } else {
+    clinicFolder = rootFolder.createFolder(clinic);
+  }
+
+  let staffFolder;
+  const staffFolders = clinicFolder.getFoldersByName(staffName);
+  if (staffFolders.hasNext()) {
+    staffFolder = staffFolders.next();
+  } else {
+    staffFolder = clinicFolder.createFolder(staffName);
+  }
+
+  const doc = DocumentApp.create(fileName);
+  const body = doc.getBody();
+  
+  body.appendParagraph('■ 面談日: ' + date);
+  body.appendParagraph('■ 院名: ' + clinic);
+  body.appendParagraph('■ スタッフ名: ' + staffName);
+  body.appendParagraph('■ 評価者名: ' + (evaluator || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【文字起こし】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(transcript || '');
+  body.appendParagraph('');
+  body.appendParagraph('【チェックリスト結果】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(checklist || '');
+  body.appendParagraph('');
+  body.appendParagraph('【面談メモ】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(memo || 'なし');
+  body.appendParagraph('');
+  body.appendParagraph('【カテゴリ別評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  const categoryNames = ['素直','行動スピード','振り返り・前進','継続・挑戦','キッカケづくり','凡事徹底'];
+  const ranks = (categoryRanks || '').split(',');
+  const reasons = (categoryReasons || '').split('|');
+  categoryNames.forEach((name, i) => {
+    body.appendParagraph(name + ': ' + (ranks[i] || '') + '　理由: ' + (reasons[i] || ''));
+  });
+  body.appendParagraph('');
+  body.appendParagraph('【総合評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('評価: ' + (totalRank || ''));
+  body.appendParagraph('コメント: ' + (totalComment || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【AI評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(aiSummary || 'なし');
+  doc.saveAndClose();
+  
+  const file = DriveApp.getFileById(doc.getId());
+  staffFolder.addFile(file);
+  DriveApp.getRootFolder().removeFile(file);
+  
+  const docUrl = doc.getUrl();
+  saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary);
+  return docUrl;
+}
+
+function saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    sheet = ss.insertSheet(clinic);
+    sheet.appendRow(['面談日','院名','スタッフ名','評価者名','素直(点)','行動スピード(点)','振り返り・前進(点)','継続・挑戦(点)','キッカケづくり(点)','凡事徹底(点)','素直(評価)','行動スピード(評価)','振り返り・前進(評価)','継続・挑戦(評価)','キッカケづくり(評価)','凡事徹底(評価)','総合評価','総合コメント','面談メモ','議事録リンク','AI要約','AI良かった点','AI改善ポイント','AI次回アクション']);
+  }
+  
+  const lines = checklist.split('\n');
+  const scores = {};
+  lines.forEach(line => {
+    const match = line.match(/^(.+?):\s*(\d+\/\d+)/);
+    if (match) scores[match[1].trim()] = match[2];
+  });
+  const ranks = (categoryRanks || '').split(',');
+  
+  // AI評価を分割して保存
+  const aiParts = parseAISummary(aiSummary || '');
+  
+  sheet.appendRow([
+    date, clinic, staffName, evaluator || '',
+    scores['素直'] || '',
+    scores['行動スピード'] || '',
+    scores['振り返り・前進'] || '',
+    scores['継続・挑戦'] || '',
+    scores['キッカケづくり'] || '',
+    scores['凡事徹底'] || '',
+    ranks[0] || '',
+    ranks[1] || '',
+    ranks[2] || '',
+    ranks[3] || '',
+    ranks[4] || '',
+    ranks[5] || '',
+    totalRank || '',
+    totalComment || '',
+    memo || '',
+    docUrl,
+    aiParts.summary,
+    aiParts.good,
+    aiParts.improve,
+    aiParts.action
+  ]);
+}
+
+function parseAISummary(aiText) {
+  const result = { summary: '', good: '', improve: '', action: '' };
+  if (!aiText) return result;
+  
+  const summaryMatch = aiText.match(/■\s*面談要約[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const goodMatch = aiText.match(/■\s*良かった点[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const improveMatch = aiText.match(/■\s*改善ポイント[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const actionMatch = aiText.match(/■\s*次回アクション[^\n]*\n([\s\S]*?)(?=■|$)/);
+  
+  if (summaryMatch) result.summary = summaryMatch[1].trim();
+  if (goodMatch) result.good = goodMatch[1].trim();
+  if (improveMatch) result.improve = improveMatch[1].trim();
+  if (actionMatch) result.action = actionMatch[1].trim();
+  
+  return result;
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  
+  let selfEvalText = '';
+  try {
+    const selfEval = getSelfEvaluation(data.staff, data.clinic);
+    if (selfEval) {
+      selfEvalText = `素直: ${selfEval.素直}\n行動スピード: ${selfEval.行動スピード}\n振り返り・前進: ${selfEval.振り返り前進}\n継続・挑戦: ${selfEval.継続挑戦}\nキッカケづくり: ${selfEval.キッカケづくり}\n凡事徹底: ${selfEval.凡事徹底}\n頑張ったこと: ${selfEval.頑張ったこと}\n課題: ${selfEval.課題}`;
+    }
+  } catch(err) {
+    selfEvalText = '';
+  }
+
+  let aiSummary = '';
+  try {
+    aiSummary = generateAISummary(
+      data.transcript || '',
+      data.checklistDetail || '',
+      selfEvalText
+    );
+  } catch(err) {
+    aiSummary = 'AI評価の生成に失敗しました：' + err.message;
+  }
+
+  const url = saveToGoogleDocs(
+    data.clinic,
+    data.staff,
+    data.transcript || '',
+    data.checklistDetail || '',
+    data.memo || '',
+    data.evaluator || '',
+    data.aiRank || '',
+    data.categoryReasons || '',
+    data.managerRank || '',
+    data.managerComment || '',
+    aiSummary
+  );
+  
+  return ContentService.createTextOutput(JSON.stringify({url: url}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function generateAISummary(transcript, checklistDetail, selfEvaluation) {
+  const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  
+  const prompt = `以下は1on1面談の記録です。評価者の評価を主軸に、スタッフの自己評価を補足として参考にしながら、AIとして分析・フィードバックを生成してください。
+
+【文字起こし】
+${transcript}
+
+【評価者チェックリスト結果】
+${checklistDetail}
+
+【スタッフ自己評価（補足）】
+${selfEvaluation || 'なし'}
+
+以下の形式で日本語で回答してください：
+■ 面談要約（3〜5行）
+■ 良かった点
+■ 改善ポイント
+■ 次回アクション`;
+
+  const response = UrlFetchApp.fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
+  );
+  
+  const result = JSON.parse(response.getContentText());
+  return result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+}
+
+function testGemini() {
+  try {
+    const result = generateAISummary(
+      'テスト文字起こし：今月は接客の改善に取り組みました。',
+      '素直: 4/6\n行動スピード: 5/6\n振り返り・前進: 3/6',
+      'よく頑張れたと思います。'
+    );
+    Logger.log('結果: ' + result);
+  } catch(e) {
+    Logger.log('エラー: ' + e.message);
+  }
+}
+
+function testApiKey() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  Logger.log('APIキー: ' + key);
+}
+
+function getSelfEvaluation(staffName, clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('スタッフ自己評価');
+  const data = sheet.getDataRange().getValues();
+  
+  let bestMatch = null;
+  let bestDiff = Infinity;
+  const now = new Date();
+  
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][1] === staffName && data[i][2] === clinic) {
+      const formDate = new Date(data[i][3]);
+      const diff = Math.abs(formDate - now);
+      
+      if (diff < 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+        bestDiff = diff;
+        bestMatch = {
+          素直: data[i][4],
+          行動スピード: data[i][5],
+          振り返り前進: data[i][6],
+          継続挑戦: data[i][7],
+          キッカケづくり: data[i][8],
+          凡事徹底: data[i][9],
+          頑張ったこと: data[i][10],
+          課題: data[i][11]
+        };
+      }
+    }
+  }
+  return bestMatch;
+}
+
+function onFormSubmit(e) {
+  const sheet = e.range.getSheet();
+  const row = e.range.getRow();
+  const formId = '1kc-yNOdph3AG8BP98oJ6qEHq44xa249cuPT2YT-p-H4';
+  const responseUrl = `https://docs.google.com/forms/d/${formId}/edit#responses`;
+  
+  const maxCounts = [6, 6, 6, 6, 6, 7];
+  
+  for (let i = 0; i < 6; i++) {
+    const colIndex = 5 + i;
+    const cellValue = sheet.getRange(row, colIndex).getValue();
+    const checkedCount = cellValue ? cellValue.toString().split(',').length : 0;
+    sheet.getRange(row, 13 + i).setValue(checkedCount + '/' + maxCounts[i]);
+  }
+  
+  sheet.getRange(row, 19).setValue(responseUrl);
+}
+ステップ3：保存する
+
+貼り付けたら、上のフロッピーディスクのマーク（または Cmd+S）で保存してください。
+
+ステップ4：再デプロイする（ここが超重要）
+
+GASは、コードを直しただけではウェブには反映されません。必ず「デプロイし直し」が必要です。しかも、新規ではなく既存のデプロイを更新しないとURLが変わってしまうので、次の手順で進めてください。
+
+右上の 「デプロイ」→「デプロイを管理」 をクリック
+今あるデプロイの右にある 鉛筆マーク（編集） をクリック
+「バージョン」のところを 「新バージョン」 に変更
+「デプロイ」 を押す
+これでURLは変わらず、中身だけ新しくなります。
+
+ステップ4まで終わったら、ダッシュボードをシークレットモードで開いて確認してみてください。
+
+https://rkitaoka-blip.github.io/kadmori-evaluation/dashboard.html
+点数バーが埋まっていれば成功です。うまくいったか、まだダメか教えてください。もし総合ランクの「-」だけが残るようなら、それは別の小さな列ズレが原因なので、続けて直します。
+
+スクリーンショット 2026-06-25 15.37.53.png
+スクリーンショット 2026-06-25 15.38.07.png
+ドキュメントやスプシは普段は評価者もあまり見ないと思うから、このウェブアプリでひと目でわかるようにしてほしい、AI評価や点数、一つ一つのコメントも全部
+そして、スタッフにLINEで送る際は、別のAI評価だけ、とかプライバシーややる気の維持などを意識してやりたい
+
+6月25日
+
+保存バグを特定し、段階的な改善計画を構想した。
+保存バグを特定し、段階的な改善計画を構想した。
+点数バー、バッチリ出ましたね！🎉 素直・行動・凡事のバーが埋まって、詳細画面のカテゴリ別スコア（素直6/6、行動スピード2/6…）も色分けで表示されています。日付の化け問題は完全に解決しました。
+
+ただ、スクショを見てまだ2つ足りないのに気づきました。そして、これも直せます。
+
+総合ランクが「総合 -」のまま
+「AI評価データなし」と出ている（要約・良かった点・改善ポイント・次回アクションが空）
+これ、「次回面談から記録されます」と出ていますが、実はそういう仕様ではなく、保存のときの“名前の行き違い”が原因でした。コードを照合したら見つかりました。
+
+評価ページは「総合ランク」「カテゴリ評価」「コメント」を送っているのに、受け取る側（GAS）が昔の名前のままで受け取ろうとしていて、すれ違って空になっていたんです。AI評価が出ないのも同じ並びの問題です。
+
+ここを直せば、次の面談から 総合ランクもAI評価も自動で入る ようになります。直しましょう。
+
+変更したのは3行だけ
+前回貼ったコードの、doPost という部分の中の3行の名前を直しただけです。また全文を載せるので、エディタを全選択→貼り替えしてください（変更点は doPost の中だけです）。
+
+javascript
+const SPREADSHEET_ID = '1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4';
+
+function doGet(e) {
+  const action = e.parameter.action;
+  
+  if (action === 'getStaffList') {
+    return getStaffList(e.parameter.clinic);
+  }
+  if (action === 'getStaffDetail') {
+    return getStaffDetail(e.parameter.clinic, e.parameter.staff);
+  }
+  
+  return HtmlService.createTemplateFromFile('index')
+    .evaluate()
+    .setTitle('カドモリ 1on1評価システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getStaffList(clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  const data = sheet.getDataRange().getDisplayValues();
+  const staffMap = {};
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const staffName = row[2];
+    if (!staffName) continue;
+    
+    if (!staffMap[staffName] || row[0] > staffMap[staffName].date) {
+      staffMap[staffName] = {
+        name: staffName,
+        clinic: row[1],
+        evaluator: row[3],
+        date: row[0],
+        scores: {
+          素直: row[4],
+          行動スピード: row[5],
+          振り返り前進: row[6],
+          継続挑戦: row[7],
+          キッカケづくり: row[8],
+          凡事徹底: row[9]
+        },
+        totalRank: row[16],
+        totalComment: row[17]
+      };
+    }
+  }
+  
+  const result = Object.values(staffMap);
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getStaffDetail(clinic, staff) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  const data = sheet.getDataRange().getDisplayValues();
+  const history = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[2] !== staff) continue;
+    
+    history.push({
+      date: row[0],
+      clinic: row[1],
+      evaluator: row[3],
+      scores: {
+        素直: row[4],
+        行動スピード: row[5],
+        振り返り前進: row[6],
+        継続挑戦: row[7],
+        キッカケづくり: row[8],
+        凡事徹底: row[9]
+      },
+      categoryRanks: {
+        素直: row[10],
+        行動スピード: row[11],
+        振り返り前進: row[12],
+        継続挑戦: row[13],
+        キッカケづくり: row[14],
+        凡事徹底: row[15]
+      },
+      totalRank: row[16],
+      totalComment: row[17],
+      memo: row[18],
+      docUrl: row[19],
+      aiSummary: row[20] || '',
+      aiGood: row[21] || '',
+      aiImprove: row[22] || '',
+      aiAction: row[23] || ''
+    });
+  }
+  
+  history.sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  return ContentService.createTextOutput(JSON.stringify(history))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveToGoogleDocs(clinic, staffName, transcript, checklist, memo, evaluator, categoryRanks, categoryReasons, totalRank, totalComment, aiSummary) {
+  const date = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  const fileName = clinic + '_' + staffName + '_' + date;
+  
+  const rootFolderName = 'カドモリ1on1記録';
+  let rootFolder;
+  const rootFolders = DriveApp.getFoldersByName(rootFolderName);
+  if (rootFolders.hasNext()) {
+    rootFolder = rootFolders.next();
+  } else {
+    rootFolder = DriveApp.createFolder(rootFolderName);
+  }
+
+  let clinicFolder;
+  const clinicFolders = rootFolder.getFoldersByName(clinic);
+  if (clinicFolders.hasNext()) {
+    clinicFolder = clinicFolders.next();
+  } else {
+    clinicFolder = rootFolder.createFolder(clinic);
+  }
+
+  let staffFolder;
+  const staffFolders = clinicFolder.getFoldersByName(staffName);
+  if (staffFolders.hasNext()) {
+    staffFolder = staffFolders.next();
+  } else {
+    staffFolder = clinicFolder.createFolder(staffName);
+  }
+
+  const doc = DocumentApp.create(fileName);
+  const body = doc.getBody();
+  
+  body.appendParagraph('■ 面談日: ' + date);
+  body.appendParagraph('■ 院名: ' + clinic);
+  body.appendParagraph('■ スタッフ名: ' + staffName);
+  body.appendParagraph('■ 評価者名: ' + (evaluator || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【文字起こし】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(transcript || '');
+  body.appendParagraph('');
+  body.appendParagraph('【チェックリスト結果】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(checklist || '');
+  body.appendParagraph('');
+  body.appendParagraph('【面談メモ】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(memo || 'なし');
+  body.appendParagraph('');
+  body.appendParagraph('【カテゴリ別評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  const categoryNames = ['素直','行動スピード','振り返り・前進','継続・挑戦','キッカケづくり','凡事徹底'];
+  const ranks = (categoryRanks || '').split(',');
+  const reasons = (categoryReasons || '').split('|');
+  categoryNames.forEach((name, i) => {
+    body.appendParagraph(name + ': ' + (ranks[i] || '') + '　理由: ' + (reasons[i] || ''));
+  });
+  body.appendParagraph('');
+  body.appendParagraph('【総合評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('評価: ' + (totalRank || ''));
+  body.appendParagraph('コメント: ' + (totalComment || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【AI評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(aiSummary || 'なし');
+  doc.saveAndClose();
+  
+  const file = DriveApp.getFileById(doc.getId());
+  staffFolder.addFile(file);
+  DriveApp.getRootFolder().removeFile(file);
+  
+  const docUrl = doc.getUrl();
+  saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary);
+  return docUrl;
+}
+
+function saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    sheet = ss.insertSheet(clinic);
+    sheet.appendRow(['面談日','院名','スタッフ名','評価者名','素直(点)','行動スピード(点)','振り返り・前進(点)','継続・挑戦(点)','キッカケづくり(点)','凡事徹底(点)','素直(評価)','行動スピード(評価)','振り返り・前進(評価)','継続・挑戦(評価)','キッカケづくり(評価)','凡事徹底(評価)','総合評価','総合コメント','面談メモ','議事録リンク','AI要約','AI良かった点','AI改善ポイント','AI次回アクション']);
+  }
+  
+  const lines = checklist.split('\n');
+  const scores = {};
+  lines.forEach(line => {
+    const match = line.match(/^(.+?):\s*(\d+\/\d+)/);
+    if (match) scores[match[1].trim()] = match[2];
+  });
+  const ranks = (categoryRanks || '').split(',');
+  
+  // AI評価を分割して保存
+  const aiParts = parseAISummary(aiSummary || '');
+  
+  sheet.appendRow([
+    date, clinic, staffName, evaluator || '',
+    scores['素直'] || '',
+    scores['行動スピード'] || '',
+    scores['振り返り・前進'] || '',
+    scores['継続・挑戦'] || '',
+    scores['キッカケづくり'] || '',
+    scores['凡事徹底'] || '',
+    ranks[0] || '',
+    ranks[1] || '',
+    ranks[2] || '',
+    ranks[3] || '',
+    ranks[4] || '',
+    ranks[5] || '',
+    totalRank || '',
+    totalComment || '',
+    memo || '',
+    docUrl,
+    aiParts.summary,
+    aiParts.good,
+    aiParts.improve,
+    aiParts.action
+  ]);
+}
+
+function parseAISummary(aiText) {
+  const result = { summary: '', good: '', improve: '', action: '' };
+  if (!aiText) return result;
+  
+  const summaryMatch = aiText.match(/■\s*面談要約[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const goodMatch = aiText.match(/■\s*良かった点[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const improveMatch = aiText.match(/■\s*改善ポイント[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const actionMatch = aiText.match(/■\s*次回アクション[^\n]*\n([\s\S]*?)(?=■|$)/);
+  
+  if (summaryMatch) result.summary = summaryMatch[1].trim();
+  if (goodMatch) result.good = goodMatch[1].trim();
+  if (improveMatch) result.improve = improveMatch[1].trim();
+  if (actionMatch) result.action = actionMatch[1].trim();
+  
+  return result;
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  
+  let selfEvalText = '';
+  try {
+    const selfEval = getSelfEvaluation(data.staff, data.clinic);
+    if (selfEval) {
+      selfEvalText = `素直: ${selfEval.素直}\n行動スピード: ${selfEval.行動スピード}\n振り返り・前進: ${selfEval.振り返り前進}\n継続・挑戦: ${selfEval.継続挑戦}\nキッカケづくり: ${selfEval.キッカケづくり}\n凡事徹底: ${selfEval.凡事徹底}\n頑張ったこと: ${selfEval.頑張ったこと}\n課題: ${selfEval.課題}`;
+    }
+  } catch(err) {
+    selfEvalText = '';
+  }
+
+  let aiSummary = '';
+  try {
+    aiSummary = generateAISummary(
+      data.transcript || '',
+      data.checklistDetail || '',
+      selfEvalText
+    );
+  } catch(err) {
+    aiSummary = 'AI評価の生成に失敗しました：' + err.message;
+  }
+
+  const url = saveToGoogleDocs(
+    data.clinic,
+    data.staff,
+    data.transcript || '',
+    data.checklistDetail || '',
+    data.memo || '',
+    data.evaluator || '',
+    data.categoryRanks || '',
+    data.categoryReasons || '',
+    data.totalRank || '',
+    data.totalComment || '',
+    aiSummary
+  );
+  
+  return ContentService.createTextOutput(JSON.stringify({url: url}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function generateAISummary(transcript, checklistDetail, selfEvaluation) {
+  const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  
+  const prompt = `以下は1on1面談の記録です。評価者の評価を主軸に、スタッフの自己評価を補足として参考にしながら、AIとして分析・フィードバックを生成してください。
+
+【文字起こし】
+${transcript}
+
+【評価者チェックリスト結果】
+${checklistDetail}
+
+【スタッフ自己評価（補足）】
+${selfEvaluation || 'なし'}
+
+以下の形式で日本語で回答してください：
+■ 面談要約（3〜5行）
+■ 良かった点
+■ 改善ポイント
+■ 次回アクション`;
+
+  const response = UrlFetchApp.fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
+  );
+  
+  const result = JSON.parse(response.getContentText());
+  return result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+}
+
+function testGemini() {
+  try {
+    const result = generateAISummary(
+      'テスト文字起こし：今月は接客の改善に取り組みました。',
+      '素直: 4/6\n行動スピード: 5/6\n振り返り・前進: 3/6',
+      'よく頑張れたと思います。'
+    );
+    Logger.log('結果: ' + result);
+  } catch(e) {
+    Logger.log('エラー: ' + e.message);
+  }
+}
+
+function testApiKey() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  Logger.log('APIキー: ' + key);
+}
+
+function getSelfEvaluation(staffName, clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('スタッフ自己評価');
+  const data = sheet.getDataRange().getValues();
+  
+  let bestMatch = null;
+  let bestDiff = Infinity;
+  const now = new Date();
+  
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][1] === staffName && data[i][2] === clinic) {
+      const formDate = new Date(data[i][3]);
+      const diff = Math.abs(formDate - now);
+      
+      if (diff < 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+        bestDiff = diff;
+        bestMatch = {
+          素直: data[i][4],
+          行動スピード: data[i][5],
+          振り返り前進: data[i][6],
+          継続挑戦: data[i][7],
+          キッカケづくり: data[i][8],
+          凡事徹底: data[i][9],
+          頑張ったこと: data[i][10],
+          課題: data[i][11]
+        };
+      }
+    }
+  }
+  return bestMatch;
+}
+
+function onFormSubmit(e) {
+  const sheet = e.range.getSheet();
+  const row = e.range.getRow();
+  const formId = '1kc-yNOdph3AG8BP98oJ6qEHq44xa249cuPT2YT-p-H4';
+  const responseUrl = `https://docs.google.com/forms/d/${formId}/edit#responses`;
+  
+  const maxCounts = [6, 6, 6, 6, 6, 7];
+  
+  for (let i = 0; i < 6; i++) {
+    const colIndex = 5 + i;
+    const cellValue = sheet.getRange(row, colIndex).getValue();
+    const checkedCount = cellValue ? cellValue.toString().split(',').length : 0;
+    sheet.getRange(row, 13 + i).setValue(checkedCount + '/' + maxCounts[i]);
+  }
+  
+  sheet.getRange(row, 19).setValue(responseUrl);
+}
+手順（前回と同じです）
+
+GASエディタで全選択（Cmd+A）→ 貼り替え
+保存（Cmd+S）
+再デプロイ：「デプロイ」→「デプロイを管理」→ 鉛筆マーク → バージョン「新バージョン」→「デプロイ」
+そのあと、評価を1件テストで保存してみてください（実際の面談でなくてOK）。その新しい行で、総合ランクとAI評価が入るか確認できます。既存のテストデータには入りませんが、これからの分はちゃんと記録されます。
+
+この先の進め方（要望2つへの道筋）
+北岡さんの要望、しっかり受け取りました。順番に進めるのがおすすめです。
+
+① まず「全部ひと目で見える」化 ― 今やっている保存の修正が効けば、詳細画面にAI評価（要約・良かった点・改善・次回アクション）が出るようになります。それに加えて、各カテゴリの「なぜこの評価か」という理由コメントも詳細画面に出すよう、表示を足せます。これで評価者はアプリだけで全部把握できます。
+
+② 次にLINE配信 ― ここは設計がとても大事なところです。北岡さんの「AI評価だけ・プライバシー・やる気の維持」という方針はまさに正解で、具体的には スタッフには“前向きな要約＋良かった点＋次回アクション”だけを送り、点数・総合ランク・評価者の生コメントは送らない、という切り分けにできます。叱責ではなく成長を後押しするトーンに整えることも可能です。
+
+まずは①の保存修正を試して、総合ランクとAI評価が出るか教えてください。出たら、表示の充実 → LINE設計、と進めましょう。
+
+一旦ここはおいといて、LINEへの接続みたいな方法からやるのはおかしいですか？
+
+6月25日
+
+順序の妥当性を検証し、LINE構築の段階的進め方を構想した。
+順序の妥当性を検証し、LINE構築の段階的進め方を構想した。
+おかしくないですよ。むしろ理にかなっています。
+
+LINE配信は、今やっていたダッシュボードの修正とは完全に独立した作業です。だから先にこっちから始めても全く問題ありません。それどころか、LINEは事前の準備（アカウント開設やID紐付け）に意外と時間がかかるので、先に土台を作っておくのは賢い進め方です。AI評価の中身が完成するのを待たなくても、仮のテキストで「送る仕組み」だけ先に作って動作確認できます。
+
+ただ、最初に全体像だけ共有させてください。LINEで「スタッフ個人に」送るには、ざっくり3ステップの土台作りが必要です。
+
+ひとつ目は、LINE公式アカウントとMessaging APIの準備。これが送信の入り口になります。
+
+ふたつ目が、実は一番のキモで、「誰に送るか」をシステムが分かるようにすること。LINEは電話番号やスタッフ名では送れません。スタッフ一人ひとりに公式アカウントを「友だち追加」してもらい、その人のLINE上のID（userId）をスプレッドシートに紐付ける、という準備が要ります。ここがプライバシー設計とも直結する大事な部分です。
+
+みっつ目が、GASからメッセージを送る処理。ここまで来れば、AI評価の中から「スタッフに見せたい部分だけ」を整形して送る、という北岡さんの希望が実現できます。
+
+なので、最初の一歩は「ひとつ目」のアカウント準備からになります。状況を教えてください。
+
+Q: LINE公式アカウント（スタッフに送るためのビジネス用LINE）は、もう作っていますか？
+A: まだ作っていない
+
+6月25日
+
+LINE公式アカウント作成手順を整理中。
+LINE公式アカウント作成手順を整理中。
+わかりました。では一緒に作っていきましょう。ここは少し手順が多いので、1ステップずつ進めます。まず最新の開設方法を確認しますね。
+
+
+LINE公式アカウント作成手順を段階的に構成した。
+LINE公式アカウント作成手順を段階的に構成した。
+最新の手順を確認しました。今は流れが少し変わっていて、**「①公式アカウント本体を作る → ②その管理画面からMessaging APIを有効化する」**という2段階になっています（昔は開発者サイトから直接作れましたが、今はこの順番が必須です）。
+
+今日はまず①の公式アカウント作成だけ、確実に終わらせましょう。
+
+始める前に、2つだけ確認
+ひとつは必要なもの。作成には「個人のLINEアカウント」か「メールアドレス」のどちらかがあればOKです。カドモリさん用に新しく作るなら、会社のメールアドレスを使うのがおすすめです（個人LINEに紐づけると、あとで管理者を引き継ぎにくくなるため）。
+
+もうひとつは料金。LINE公式アカウントは無料プランから始められます。月1回スタッフに送る程度なら、無料の範囲で十分収まる見込みです（送信できる通数の上限は変わることがあるので、本格運用の前に最新を一緒に確認しましょう）。 
+F-Media
+
+ステップ1：LINE公式アカウントを作る
+ブラウザで「LINE公式アカウント 開設」と検索し、LINEヤフー for Business（公式）の開設ページを開きます
+「アカウントの開設（無料ではじめる）」に進みます
+LINEビジネスIDに登録します（さっき決めた、個人LINE または メールアドレスで）
+アカウント情報を入力します
+アカウント名＝スタッフのLINEに表示される名前です（例：「カドモリ 評価通知」など、スタッフが見て分かるもの）
+業種などは実情に合わせて選べばOK
+入力を確認して「完了」。認証は今は不要なので「あとで認証を行う」で進めて大丈夫です 
+Note
+これで公式アカウント本体ができます。作成の途中で、自分の個人LINEにその公式アカウントを「友だち追加」しておくと、後のテストがラクになります。 
+Note
+
+ここまでできたら教えてください。次の②Messaging APIの有効化（システムと繋ぐ鍵を作る作業）に進みます。
+
+もし途中で「個人LINEで作るか、メールで作るか」迷ったら、そこも一緒に考えるので気軽に聞いてくださいね。どちらで作るか決まっていますか？
+
+公式ラインを作るのは、カドモリさんのメールアドレスを作るように言ったほうがいいですか？
+それとも、検証の段階では、私のものを使いますか？
+
+6月25日
+
+検証と本番で使い分ける戦略を検討した。
+検証と本番で使い分ける戦略を検討した。
+いい質問です。ここは後々の引き継ぎに関わるので、分けて考えるのがおすすめです。結論から言うと、検証は北岡さんのもので、本番はカドモリさん名義で、が一番きれいです。
+
+理由はこうです。
+
+検証段階（今）は、北岡さんのもので作る。 検証中は設定変更やトークンの再発行など、細かい作業を何度も繰り返します。そのたびにカドモリさんを巻き込むと、お互い手間ですし、まだ完成していない状態をクライアントに見せることにもなります。サクサク自由に試せる「テスト用」を手元に持っておく方が圧倒的に進めやすいです。
+
+ただ、ひとつ気をつけたいのは、個人LINEに紐づけるより、このプロジェクト専用のメールアドレス（GmailなどでOK）で作ることです。北岡さん個人のLINEに会社のシステムが紐づくと、後で外すのが面倒になります。専用メールなら後腐れがありません。
+
+本番は、カドモリさんの会社メールで作ってもらう。 これが大事なポイントです。このアカウントには最終的に**スタッフのLINE情報（個人情報）**が紐づきます。その持ち主・管理責任は、コントラクターである北岡さんではなく、カドモリさん側にあるのが健全です。プロジェクトを離れた後に、北岡さん名義のアカウントに会社の重要データが残る、という状態は避けたいところです。本番アカウントを作ってもらったら、北岡さんを「管理者」として追加してもらえば、引き続き設定作業はできます。
+
+ひとつだけ知っておいてほしい注意点があります。スタッフ一人ひとりのLINE上のID（userId）は、アカウントごとに別物になります。つまり、検証用アカウントで集めたIDは、本番アカウントでは使えません。本番では、スタッフにあらためて友だち追加してもらってIDを集め直すことになります。とはいえ、検証の目的は「仕組みが動くか」の確認なので、ここは全く問題ありません。
+
+なので、今日の進め方としては —— 北岡さんのプロジェクト用メールで、テスト用の公式アカウントをサッと作る。これで進めるのがおすすめです。
+
+カドモリさんへの「本番アカウント作成のお願い」は、仕組みが完成して「これでいけます」と見せられる段階になってから依頼する方が、説明もスムーズですし、説得力も出ます。
+
+この方針で進めてよさそうですか？それとも、最初からカドモリさん名義で作りたい事情があれば、そのやり方でも案内します。
+
+はい
+
+6月25日
+では、北岡さんのプロジェクト用メールでテスト用の公式アカウントを作る方向で進めましょう。
+
+ひとつ前のステップに戻ります。まだ手元に「このプロジェクト専用のメールアドレス」が無ければ、先にそれを用意するのがおすすめです。GmailなどでOKです（例：kadmori.eval.test@gmail.com のような分かりやすいもの）。普段使いのメールと混ざらないので、後の管理がラクになります。
+
+専用メールの準備ができたら、さっきのステップ1に進みます。おさらいすると、
+
+ブラウザで「LINE公式アカウント 開設」と検索 → LINEヤフー for Business（公式）の開設ページへ
+「アカウントの開設（無料ではじめる）」に進む
+LINEビジネスIDに、用意した専用メールアドレスで登録
+アカウント情報を入力
+アカウント名＝スタッフのLINEに表示される名前（例：「カドモリ 評価通知（テスト）」など、テスト用とわかる名前にしておくと安心）
+業種などは実情に合わせて
+確認して「完了」。認証は「あとで認証を行う」でOK
+途中で自分の個人LINEに、その公式アカウントを「友だち追加」しておく（後のテストで使います）
+ここまでできたら教えてください。次に Messaging APIの有効化（システムと繋ぐ鍵を作る作業）に進みます。
+
+ひとつ確認です。このプロジェクト専用のメールアドレスは、もう持っていますか？ まだなら、先にそれを作るところからになります。
+
+スクリーンショット 2026-06-25 16.06.24.png
+6月25日
+いい感じです、このまま進めましょう。各項目、こう埋めればOKです。
+
+アカウント名（カドモリ 評価通知（テスト））→ このままでバッチリです。
+
+メールアドレス（r.kitaoka@vexum-ai.com）→ これでOK。VEXUMのメールなのでテスト用として問題ありません。
+
+会社・事業者の所在国・地域（日本）→ そのままでOK。
+
+会社・事業者名 → ここは空欄のままだと進めないかもしれないので、VEXUM か カドモリ と入れておきましょう。テスト用なのでどちらでも構いませんが、入れておくと無難です。
+
+業種 → 大業種で「美容・サロン」系、小業種で「美容室・理容室」あたりを選べばOK。ぴったりが無ければ近いものでまったく問題ありません（後から変更できます）。
+
+運用目的（複数選択可）→ 該当が無くて迷うところですが、選択必須なので「その他」にチェックを入れておけば十分です。これは集客用の質問なので、今回の用途には影響しません。
+
+主な使い方 → ここは 「メッセージ配信用」 を選んでください。今回はこちらから評価結果を送る使い方なので、これが正解です。
+
+入力できたら、画面を下にスクロールして「確認」→「完了」へ進んでください。途中で認証を求められたら「あとで認証を行う」でOKです。
+
+できたら教えてください。次はいよいよ Messaging APIの有効化（システムと繋ぐ鍵を作る作業）に進みます。
+
+hai
+
+6月25日
+順調ですね。では次に進みましょう。ここからが②Messaging APIの有効化です。さっき作った公式アカウントに「システムと繋ぐ鍵」を付ける作業になります。少し画面を行き来するので、1ステップずついきます。
+
+まず今、画面はどうなっていますか？公式アカウントの作成が完了して、管理画面（LINE Official Account Manager）が開いている状態でしょうか。
+
+もしそうなら、次の手順に進みます。
+
+管理画面の**右上にある「設定」**をクリック
+左側のメニューから「Messaging API」を選択
+「Messaging APIを利用する」というボタンをクリック
+ここまで進むと、「プロバイダー」を作る画面が出てきます。プロバイダーというのは、ざっくり言うと「アプリやシステムをまとめる入れ物」のことです。聞き慣れない言葉ですが、ここでつまずきやすいポイントが1つだけあるので、先に伝えておきます。
+
+プロバイダー名は、あとから変更できません。 なので適当な名前ではなく、VEXUM か カドモリ のような、分かりやすい名前にしてください。
+
+まずは上の1〜3まで進めてみてください。「Messaging APIを利用する」を押してプロバイダーの入力画面が出たら、そこで一度手を止めて教えてくださいね。一緒に確認しながら進めます。
+
+今、管理画面は開けていますか？
+
+スクリーンショット 2026-06-25 16.10.11.png
+6月25日
+ちょうどこの画面ですね。ここがさっき言った「あとから変更できない」ポイントです。
+
+「プロバイダー名を入力」の欄に、VEXUM と入れてください。
+
+（プロバイダーは「システムを提供する開発元」という意味の入れ物なので、開発しているVEXUM名義が自然です。カドモリ でも構いませんが、本番でカドモリさん名義のアカウントを作るときに、また別途プロバイダーを用意することになるので、テスト用のここは VEXUM がすっきりします。）
+
+入力したら、右下の 「同意する」 をクリックしてください。
+
+これでMessaging APIが有効になり、「Channel ID」「Channel secret」といった情報が表示される画面になるはずです。
+
+そこまで進んだら教えてください。次は、システムが実際にメッセージを送るための鍵（アクセストークン）を発行する作業に進みます。なお、ここで表示される secret やトークンはパスワードのようなものなので、スクショを撮るのは構いませんが、ここのチャットにそのまま貼り付けるのは避けてくださいね（取り扱いは次のステップで案内します）。
+
+スクリーンショット 2026-06-25 16.10.55.png
+6月25日
+この画面は両方とも空欄のままでOKです。
+
+「プライバシーポリシー」と「利用規約」はどちらも**（任意）**と書かれている通り、入力しなくて大丈夫です。スタッフ向けの社内システムで、一般公開するものではないので、テスト段階では不要です（必要になれば後から追加できます）。
+
+そのまま右下の 「OK」 をクリックしてください。
+
+これでMessaging APIの有効化が完了し、「Channel ID」などの情報が表示される画面に切り替わるはずです。
+
+そこまで進んだら教えてください。次は、システムがメッセージを送るための鍵（チャネルアクセストークン）を発行する作業に進みます。さっきもお伝えしましたが、そこで出てくる secret やトークンはパスワードと同じ扱いなので、チャットへの貼り付けは避けてくださいね。
+
+Channel情報
+Channel ID
+Channel secret
+gadetekimashita
+
+6月25日
+完了です、お疲れさまでした。これでMessaging APIの土台ができました。
+
+ここから、システムが実際にメッセージを送るための**鍵（チャネルアクセストークン）**を発行します。この鍵はChannel ID/secretとは別物で、「メッセージを送る」ための一番大事なキーです。ただし、発行する場所が管理画面（LINE Official Account Manager）ではなく、LINE Developersという開発者向けのサイトに移ります。
+
+ステップ：チャネルアクセストークンを発行する
+
+今いる画面の中に「LINE Developers」へのリンクがあるはずなので、それをクリック（見当たらなければ、ブラウザで developers.line.biz/console/ を開いてください）
+同じアカウントで自動的にログインされ、さっき作ったプロバイダー（VEXUM）が表示されます。それをクリック
+「カドモリ 評価通知（テスト）」のチャネルが表示されるので、それをクリック
+上のタブから「Messaging API設定」を開く
+一番下までスクロールすると「チャネルアクセストークン（長期）」という欄があります。「発行」ボタンを押す
+これで長い文字列（トークン）が表示されます。これがメッセージ送信の鍵です。
+
+ひとつ大事な注意です。このトークンはパスワードそのものなので、ここのチャットには貼り付けないでください。あとでGAS（プログラム側）に登録しますが、その方法は前回のGemini APIキーと同じく、コードに直接書かず、安全な保管場所（スクリプトプロパティ）にしまうやり方で進めます。なので今は、トークンを発行して、画面に表示させておくだけでOKです（必要ならスクショで控えておいてください）。
+
+「Messaging API設定」タブを開いて、チャネルアクセストークンを発行できたら教えてください。発行できたら、次はいよいよGASからテストメッセージを送ってみるところに進みます。
+
+スクリプトプロパティ）にしまう
+どうやって来ればいい？
+
+6月25日
+いい質問です。前回Gemini APIキーをしまったのと同じ場所です。やり方を案内しますね。
+
+ただ、その前にひとつ確認させてください。チャネルアクセストークンの「発行」はもう押しましたか？ スクリプトプロパティにしまうのは、その発行された長いトークンなので、先にトークンを手元に用意しておく必要があります。
+
+トークンが表示されている前提で、しまう手順はこうです。
+
+ステップ：スクリプトプロパティにトークンを保存する
+
+GASエディタを開く
+https://script.google.com/d/1f4opvAFqfWWoXfIR6CG6CbP830fyw2B8-6MSGBHoG13ImXUc43nczu4B/edit
+左側のメニューにある**歯車マーク（⚙️「プロジェクトの設定」）**をクリック
+下のほうにスクロールすると「スクリプト プロパティ」という欄があります
+「スクリプト プロパティを追加」をクリック
+2つの入力欄が出るので、こう入れます
+プロパティ（左の欄）：LINE_TOKEN
+値（右の欄）：さっき発行した長いトークンを貼り付け
+「スクリプト プロパティを保存」をクリック
+これで完了です。トークンが安全な場所にしまわれ、コードからは LINE_TOKEN という名前で呼び出せるようになります（前回の GEMINI_API_KEY と同じ仕組みです）。
+
+ここでのポイントは、トークンそのものはGASのプロパティ画面に直接貼るということです。この画面は北岡さんしか見られない安全な場所なので大丈夫です。こちらのチャットには貼らないでくださいね。
+
+保存できたら教えてください。次は、このトークンを使って自分の個人LINEにテストメッセージを送ってみるところに進みます。うまく届けば、土台が完成した合図です。
+
+まず確認ですが、チャネルアクセストークンの発行ボタンは、もう押せましたか？
+
+はい、しましょう
+
+6月25日
+では、GASからテストメッセージを送ってみましょう。ここで初めて「LINEに実際に届く」瞬間です。
+
+ただ、メッセージを送るには送り先のあなた自身のID（userId）が必要です。これがないと「誰に送るか」が決まりません。なので2段階で進めます。まず自分のIDを調べる、次にそのIDに送ってみる、の順です。
+
+準備：友だち追加できていますか？
+その前に1点だけ確認です。さっき作った公式アカウント「カドモリ 評価通知（テスト）」を、ご自身の個人LINEで友だち追加できていますか？ これができていないと、テストメッセージが届きません。
+
+まだなら、管理画面（LINE Official Account Manager）の「ホーム」あたりに友だち追加用のQRコードがあるので、スマホで読み取って追加してください。
+
+ステップ：自分のuserIdを調べる関数を追加する
+友だち追加ができている前提で進めます。今のGASコードの一番下に、下のコードを丸ごと貼り付けてください（既存のコードは消さず、末尾に追加するだけです）。
+
+javascript
+// === LINE テスト用：自分のuserIdを調べる ===
+function getMyUserId() {
+  const TOKEN = PropertiesService.getScriptProperties().getProperty('LINE_TOKEN');
+  const url = 'https://api.line.me/v2/bot/followers/ids';
+  const response = UrlFetchApp.fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  });
+  const result = JSON.parse(response.getContentText());
+  Logger.log('あなたのuserId一覧: ' + JSON.stringify(result.userIds));
+}
+貼り付けたら、こう進めます。
+
+保存（Cmd+S）
+画面上部の関数選択メニューで「getMyUserId」を選ぶ
+「実行」ボタンを押す
+初回は「承認が必要です」と出るので、画面の指示に従って自分のGoogleアカウントで許可してください（前回も同じ流れでした）
+実行が終わったら、下に出る「実行ログ」を見てください
+ログに あなたのuserId一覧: ["Uxxxxxxxx..."] のような、U から始まる長い文字列が表示されます。これがあなたのIDです。
+
+うまくIDが表示されたか教えてください。表示されたら、いよいよそのIDに向けてテストメッセージを送ります。
+
+ちなみにこのID自体は秘密の鍵ではないので神経質にならなくて大丈夫ですが、念のため、ログに出た内容をこのチャットに貼るときは U の後の数文字だけにしておけば十分です（全部は不要です）。
+
+個人に追加している場合も、これをしますか？
+
+6月25日
+はい、個人で友だち追加している場合でも、これをやります。むしろ、友だち追加しているからこそ、この方法で自分のIDが取れます。
+
+少し補足しますね。「友だち追加した」というのは、あなたの個人LINEと公式アカウントが繋がった状態です。でも、システム（GAS）から見ると、「友だちになった人が、LINE上のどのIDの人なのか」はまだ分かっていません。名前や電話番号では送れず、U から始まるID（userId）でしか送れない仕組みだからです。
+
+さっきの getMyUserId は、その「友だち追加してくれた人のID一覧」をLINEに問い合わせる関数です。今は友だちがあなた1人だけのはずなので、実行すればあなたのIDが1個だけ返ってきます。それを次の「送信テスト」で使います。
+
+なので流れとしては —— 友だち追加（済み）→ getMyUserIdで自分のIDを取得 → そのIDに送ってみる、という順番です。友だち追加済みなら、そのまま getMyUserId を実行してOKです。
+
+ひとつだけ確認です。さっきの手順で、getMyUserId の実行まで進めましたか？ それとも、これから実行するところでしょうか。状況に合わせて次を案内します。
+
+これは無題.gsに貼り付けますか？
+
+6月25日
+はい、その「無題.gs」で合っています。今までGASのコードを書いてきたファイルがそれなので、そこで大丈夫です。
+
+貼り付け方だけ補足します。既存のコードは消さないでください。 今あるコードの**一番下（一番最後の行のさらに下）**に、さっきのコードを追加する形です。
+
+つまり、無題.gsを一番下までスクロールして、末尾にこれを貼り足してください。
+
+javascript
+// === LINE テスト用：自分のuserIdを調べる ===
+function getMyUserId() {
+  const TOKEN = PropertiesService.getScriptProperties().getProperty('LINE_TOKEN');
+  const url = 'https://api.line.me/v2/bot/followers/ids';
+  const response = UrlFetchApp.fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  });
+  const result = JSON.parse(response.getContentText());
+  Logger.log('あなたのuserId一覧: ' + JSON.stringify(result.userIds));
+}
+貼り付けたら、
+
+保存（Cmd+S）
+画面上部の関数メニュー（実行する関数を選ぶプルダウン）で「getMyUserId」を選ぶ
+「実行」を押す
+「承認が必要です」と出たら、自分のGoogleアカウントで許可
+下の「実行ログ」に、U から始まる長い文字列が出れば成功
+ここまでやってみて、ログに何か出たら教えてください。U から始まる文字が出ればバッチリですし、もしエラーっぽいメッセージが出たら、その内容を教えてもらえれば一緒に直します。
+
+16:19:33
+お知らせ
+実行開始
+16:19:34
+エラー
+Exception: Request failed for https://api.line.me returned code 403. Truncated server response: {"message":"Access to this API is not available for your account"} (use muteHttpExceptions option to examine full response)
+getMyUserId
+@ 無題.gs:397
+
+6月25日
+このエラー、原因がはっきりしています。コードのミスではありませんので安心してください。
+
+403 Access to this API is not available for your account というのは、「友だち一覧を取得するAPI（followers/ids）は、あなたのアカウントの種類では使えません」という意味です。実はこの「友だち全員のIDをまとめて取得する」機能は、LINE側で認証済みアカウントや一部の上位アカウントだけに制限されていて、作りたてのアカウントでは使えないんです。
+
+なので、IDの取り方を変えましょう。もっと確実な方法があります。
+
+別の方法：自分が話しかけて、IDを受け取る
+「友だち一覧を聞く」のではなく、「あなたが公式アカウントに何かメッセージを送り、その送信者IDを受け取る」という方法です。これはどのアカウントでも使えます。
+
+ただこれには「Webリクエストを受け取る入り口」を用意する必要があるので、少しだけ準備します。今のコードの一番下に、下のコードを追加してください（さっき貼った getMyUserId は残しておいてOKです。使わないだけです）。
+
+javascript
+// === LINE テスト用：話しかけた人のIDをログに記録する ===
+function doPost2(e) {
+  // この関数は説明用のダミーです（実体はdoPostに統合します）
+}
+…と、ここで一点だけ確認させてください。実は今のシステムには、すでに doPost（評価データを受け取る入り口）が動いています。LINEからのメッセージも同じ doPost に届くので、そこにIDを記録する処理を少し足すのが一番きれいです。ただ、既存の doPost を触ると評価保存に影響しうるので、慎重にやりたいところです。
+
+その前に、もっと手軽な方法もあります。ID確認用の外部サイトやツールを使わずに、まず確実にいきたいので、状況を整理させてください。
+
+今やりたいことの本質は「自分のuserIdを1個知るだけ」です。これさえ分かれば、あとはテスト送信に進めます。
+
+どちらで進めたいか選んでください。
+
+何をするのですか？
+
+6月25日
+すみません、選択肢を出しそこねました。やりたいことはシンプルで、**「あなた自身のuserIdを1個だけ知る」**ことです。それさえ分かればテスト送信に進めます。さっきの友だち一覧APIが使えなかったので、別のやり方に変えます。
+
+方法は、こうです。あなたが公式アカウントにLINEで一言メッセージを送る → その「送信者ID（＝あなたのuserId）」をシステムが受け取って記録する、という流れです。これならどんなアカウントでも確実に取れます。
+
+そのために、今動いている doPost（評価データを受け取る入り口）に、LINEからのメッセージが来たときだけIDを記録する処理を少し足します。評価保存の動きは壊さないように、慎重に書いてあります。
+
+進め方はこうなります。
+
+GASのコードを差し替える（IDを記録する処理を足したもの。全文で用意します）
+再デプロイする
+デプロイで出てくるURLを、LINE側の「Webhook（メッセージの届け先）」に登録する
+スマホで、自分の個人LINEから公式アカウントに「test」とでも送る
+GASのログを見ると、あなたのuserIdが記録されている
+少し手順はありますが、一度きりの作業です。これさえ済めばIDが手に入り、テスト送信、そして本番の「スタッフごとに送り分け」まで一気に道がつながります。
+
+この方法で進めてよければ、まずステップ1のコード差し替えから1つずつ案内します。進めますか？
+
+それとも、もし「とりあえず動くのを早く見たい」のであれば、Webhookの設定をスキップして、IDだけ手っ取り早く確認できる簡易ツールを使う手もあります（ただし外部のサイトに一時的にトークンを入力する形になるので、テスト用アカウントなら許容範囲、という方法です）。
+
+どちらがよいか選んでください。
+
+Q: userIdの取得方法、どちらで進めますか？
+A: 手っ取り早い簡易ツールでIDだけ確認
+
+6月25日
+わかりました。ただ、ここで正直にお伝えしておきたいことがあります。
+
+「簡易ツール」というのは、ネット上にある第三者が作ったLINE ID確認サイトに、さっき発行したアクセストークンを入力するタイプのものが多いです。トークンは「あなたの公式アカウントからメッセージを送れる鍵」なので、それを他人のサイトに入力するのは、本来あまり推奨されません。テスト用アカウントなので実害は小さいとはいえ、本番のクライアント情報を扱うシステムを作っている立場としては、こういう「鍵を外部に渡す」癖はつけない方がいいと思います。
+
+そこで、外部サイトにトークンを渡さずに済む、手早い方法を提案させてください。実はこれが一番きれいで、手間もそんなに変わりません。
+
+おすすめ：Webhookを使う（でも超シンプル版）
+さっき「手順が多い」と言いましたが、IDを取るだけならかなり短くできます。やることは実質これだけです。
+
+GASのコードに「IDを記録する処理」を足す（全文で用意します）
+再デプロイして、出てきたURLをLINEのWebhook欄に貼る
+スマホから公式アカウントに「test」と送る
+GASのログにあなたのIDが出る
+外部サイトは一切使いません。鍵も外に出ません。一度設定すれば、このあとスタッフのIDを集めるときにもそのまま使えます（本番で必ず必要になる仕組みなので、ここで作っておくと後がラクです）。
+
+ぶっちゃけ、簡易ツールとの差は「LINEの設定画面にURLを1回貼るかどうか」くらいです。それで安全に済むなら、そっちが得だと思います。
+
+この「シンプルWebhook版」で進めてOKですか？OKなら、まずステップ1のコード差し替えを1つずつ案内します。
+
+（どうしても簡易ツールがいい、という場合は止めませんが、その場合も「トークンを入力するタイプ」は避けて、というところだけ一緒に気をつけましょう。）
+
+何をするのですか？
+私のIDさえわかればいいのですか？
+
+6月25日
+はい、**今やりたいのは「あなたのIDを1個知るだけ」**です。それさえ分かれば、次のテスト送信（自分のLINEにメッセージを届ける）に進めます。
+
+なぜIDが要るかというと、LINEは名前や電話番号では送れず、Uから始まる専用のID（userId）でしか送れない仕組みだからです。なので「送り先＝あなたのID」を先に手に入れる必要があります。
+
+ただ、さっき試した「友だち一覧をまとめて取得する方法」が、作りたてのアカウントでは使えませんでした（あのエラーの原因です）。それで別のやり方に切り替える、という話をしていました。
+
+整理すると、IDの取り方は2通りあります。
+
+ひとつは Webアプリ的な仕組みを少し作る方法（あなたがLINEで「test」と送ると、その送信者＝あなたのIDが記録される）。きれいで、後々スタッフのID集めにもそのまま使えます。
+
+もうひとつは 外部の確認サイトを使う方法。ただこれは鍵（トークン）を他人のサイトに入力するので、あまりおすすめしません。
+
+——と、ここまで説明してきましたが、少し話が細かくなりすぎましたね。 整理し直しましょう。
+
+いったん立ち止まって確認させてください。今、画面はどうなっていますか？さっきの getMyUserId を実行して 403エラーが出たところで止まっている、という認識で合っていますか？
+
+そこさえ分かれば、ここから一番シンプルな道で、あなたのIDを取るところまで案内します。今どの画面か教えてください。
+
+自分のIDはもうしでに知っているのですが、それでは意味がないのですか？
+
+6月25日
+いえ、意味あります！むしろ最高です。 すでにIDをご存知なら、さっきの遠回りな手順は全部スキップできます。
+
+ひとつだけ確認させてください。その知っているIDは、U から始まる長い文字列（例：U4af4980629... のような33文字くらいのもの）でしょうか？
+
+LINEには紛らわしいものが2つあるので、念のためです。
+
+userId（Uから始まる長い文字列）→ これが今ほしいもの ✅
+LINE ID（@053ikmzt のような、検索用の短いID）→ これは別物で、送信には使えません ❌
+もし手元にあるのが U から始まるものなら、それで完璧です。すぐにテスト送信に進めます。
+
+では、テスト送信用のコードを用意します。今のGASコードの一番下に、これを追加してください（既存のコードはそのままでOK）。
+
+javascript
+// === LINE テスト送信 ===
+function sendTestMessage() {
+  const TOKEN = PropertiesService.getScriptProperties().getProperty('LINE_TOKEN');
+  const MY_USER_ID = 'ここに自分のuserIdを貼る';  // ← Uから始まる文字列に書き換える
+
+  const url = 'https://api.line.me/v2/bot/message/push';
+  const payload = {
+    to: MY_USER_ID,
+    messages: [
+      { type: 'text', text: 'テスト送信です！カドモリ評価通知システムから届きました📩' }
+    ]
+  };
+
+  const response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + TOKEN },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  Logger.log('結果コード: ' + response.getResponseCode());
+  Logger.log('結果内容: ' + response.getContentText());
+}
+手順
+
+コードの中の ここに自分のuserIdを貼る を、あなたの U から始まるIDに書き換える（前後のクォート ' は残してください）
+保存（Cmd+S）
+上の関数メニューで「sendTestMessage」を選ぶ
+「実行」を押す
+スマホのLINEを確認 ―― 公式アカウントから「テスト送信です！」が届いていれば成功🎉
+ちなみに、userId自体は秘密の鍵ではないので、コードに書いても大丈夫です（トークンと違って、これ単体では悪用できません）。
+
+実行したら、LINEに届いたか、それともログに何か出たか教えてください。届けば、土台は完成です。そこから「AI評価をスタッフに送り分ける」本番設計に進みましょう。
+
+Uからのはないです
+
+6月25日
+なるほど、では今知っているのは @053ikmzt のような**短いID（LINE ID）**の方ですね。残念ながら、これは送信には使えないんです。送信には U から始まる方（userId）が必要で、それはまだ手元にない状態です。
+
+なので、結局その U から始まるIDを取りに行く必要があります。ここまで色々こんがらがってしまったので、一番シンプルな一本道で進めましょう。難しく考えなくて大丈夫です。
+
+やることは「あなたがLINEで一言送る → そのIDがGASのログに出る」だけです。
+
+ステップ1：コードを足す
+今のGASコードの一番下に、これを貼り付けてください（既存コードはそのまま）。
+
+javascript
+// === LINE: 話しかけた人のIDをログに出す（ID取得用）===
+function doPost(e) {
+  // LINEからのメッセージか判定
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (body.events && body.events[0] && body.events[0].source && body.events[0].source.userId) {
+      const uid = body.events[0].source.userId;
+      Logger.log('★あなたのuserId: ' + uid);
+      PropertiesService.getScriptProperties().setProperty('LAST_USER_ID', uid);
+      return ContentService.createTextOutput('ok');
+    }
+  } catch(err) {}
+
+  // ↓ ここから下は今までの評価保存の処理（そのまま）
+  const data = JSON.parse(e.postData.contents);
+  // 以下省略しないでください
+}
+…と、ここで手を止めてください。実は今のコードには、すでに doPost という関数があります。同じ名前の関数を2つ作るとエラーになるので、単純に貼り足すとマズいんです。これが、さっき私が「doPost を触ると評価保存に影響しうる」と言っていた理由です。
+
+なので、**既存の doPost を安全に書き換えた“全文”**をこちらで用意します。その方が確実です。少しだけ待ってください。
+
+ひとつ確認させてください。さっきLINEのアクセストークンを「スクリプトプロパティ」に LINE_TOKEN という名前で保存した、というところまでは完了していますよね？（前のステップで案内した作業です。）ここが済んでいれば、あとはコードの差し替えとWebhook設定だけで、すぐIDが取れます。
+
+LINE_TOKEN の保存は完了していますか？それだけ教えてください。完了していれば、評価保存を壊さない形の全文コードを用意して、一気に進めます。
+
+はい
+
+6月25日
+LINE_TOKEN の保存ができているなら、準備は整っています。では、評価保存を壊さない形の全文コードを用意します。
+
+ポイントは、既存の doPost（評価データを受け取る入り口）に「LINEからのメッセージが来たときだけ、送信者IDをログに残す」という分岐を最初に足したことです。評価データが来たときは今まで通り動きます。
+
+まず手元で正しく動くか検証してから出しますね。
+
+
+Orchestrated code deployment strategy with LINE webhook integration
+Orchestrated code deployment strategy with LINE webhook integration
+構文チェックも通りました。これで「LINEから来たメッセージのIDを記録する」処理を、評価保存を壊さずに追加できています。
+
+ステップ1：コードを差し替える
+GASエディタを全選択（Cmd+A）→ 削除 → 下を全部貼り付けてください。（手で足した getMyUserId は消えてOKです。使わないので。）
+
+javascript
+const SPREADSHEET_ID = '1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4';
+
+function doGet(e) {
+  const action = e.parameter.action;
+  
+  if (action === 'getStaffList') {
+    return getStaffList(e.parameter.clinic);
+  }
+  if (action === 'getStaffDetail') {
+    return getStaffDetail(e.parameter.clinic, e.parameter.staff);
+  }
+  
+  return HtmlService.createTemplateFromFile('index')
+    .evaluate()
+    .setTitle('カドモリ 1on1評価システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getStaffList(clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  const data = sheet.getDataRange().getDisplayValues();
+  const staffMap = {};
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const staffName = row[2];
+    if (!staffName) continue;
+    
+    if (!staffMap[staffName] || row[0] > staffMap[staffName].date) {
+      staffMap[staffName] = {
+        name: staffName,
+        clinic: row[1],
+        evaluator: row[3],
+        date: row[0],
+        scores: {
+          素直: row[4],
+          行動スピード: row[5],
+          振り返り前進: row[6],
+          継続挑戦: row[7],
+          キッカケづくり: row[8],
+          凡事徹底: row[9]
+        },
+        totalRank: row[16],
+        totalComment: row[17]
+      };
+    }
+  }
+  
+  const result = Object.values(staffMap);
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getStaffDetail(clinic, staff) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  const data = sheet.getDataRange().getDisplayValues();
+  const history = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[2] !== staff) continue;
+    
+    history.push({
+      date: row[0],
+      clinic: row[1],
+      evaluator: row[3],
+      scores: {
+        素直: row[4],
+        行動スピード: row[5],
+        振り返り前進: row[6],
+        継続挑戦: row[7],
+        キッカケづくり: row[8],
+        凡事徹底: row[9]
+      },
+      categoryRanks: {
+        素直: row[10],
+        行動スピード: row[11],
+        振り返り前進: row[12],
+        継続挑戦: row[13],
+        キッカケづくり: row[14],
+        凡事徹底: row[15]
+      },
+      totalRank: row[16],
+      totalComment: row[17],
+      memo: row[18],
+      docUrl: row[19],
+      aiSummary: row[20] || '',
+      aiGood: row[21] || '',
+      aiImprove: row[22] || '',
+      aiAction: row[23] || ''
+    });
+  }
+  
+  history.sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  return ContentService.createTextOutput(JSON.stringify(history))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveToGoogleDocs(clinic, staffName, transcript, checklist, memo, evaluator, categoryRanks, categoryReasons, totalRank, totalComment, aiSummary) {
+  const date = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  const fileName = clinic + '_' + staffName + '_' + date;
+  
+  const rootFolderName = 'カドモリ1on1記録';
+  let rootFolder;
+  const rootFolders = DriveApp.getFoldersByName(rootFolderName);
+  if (rootFolders.hasNext()) {
+    rootFolder = rootFolders.next();
+  } else {
+    rootFolder = DriveApp.createFolder(rootFolderName);
+  }
+
+  let clinicFolder;
+  const clinicFolders = rootFolder.getFoldersByName(clinic);
+  if (clinicFolders.hasNext()) {
+    clinicFolder = clinicFolders.next();
+  } else {
+    clinicFolder = rootFolder.createFolder(clinic);
+  }
+
+  let staffFolder;
+  const staffFolders = clinicFolder.getFoldersByName(staffName);
+  if (staffFolders.hasNext()) {
+    staffFolder = staffFolders.next();
+  } else {
+    staffFolder = clinicFolder.createFolder(staffName);
+  }
+
+  const doc = DocumentApp.create(fileName);
+  const body = doc.getBody();
+  
+  body.appendParagraph('■ 面談日: ' + date);
+  body.appendParagraph('■ 院名: ' + clinic);
+  body.appendParagraph('■ スタッフ名: ' + staffName);
+  body.appendParagraph('■ 評価者名: ' + (evaluator || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【文字起こし】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(transcript || '');
+  body.appendParagraph('');
+  body.appendParagraph('【チェックリスト結果】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(checklist || '');
+  body.appendParagraph('');
+  body.appendParagraph('【面談メモ】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(memo || 'なし');
+  body.appendParagraph('');
+  body.appendParagraph('【カテゴリ別評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  const categoryNames = ['素直','行動スピード','振り返り・前進','継続・挑戦','キッカケづくり','凡事徹底'];
+  const ranks = (categoryRanks || '').split(',');
+  const reasons = (categoryReasons || '').split('|');
+  categoryNames.forEach((name, i) => {
+    body.appendParagraph(name + ': ' + (ranks[i] || '') + '　理由: ' + (reasons[i] || ''));
+  });
+  body.appendParagraph('');
+  body.appendParagraph('【総合評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('評価: ' + (totalRank || ''));
+  body.appendParagraph('コメント: ' + (totalComment || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【AI評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(aiSummary || 'なし');
+  doc.saveAndClose();
+  
+  const file = DriveApp.getFileById(doc.getId());
+  staffFolder.addFile(file);
+  DriveApp.getRootFolder().removeFile(file);
+  
+  const docUrl = doc.getUrl();
+  saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary);
+  return docUrl;
+}
+
+function saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    sheet = ss.insertSheet(clinic);
+    sheet.appendRow(['面談日','院名','スタッフ名','評価者名','素直(点)','行動スピード(点)','振り返り・前進(点)','継続・挑戦(点)','キッカケづくり(点)','凡事徹底(点)','素直(評価)','行動スピード(評価)','振り返り・前進(評価)','継続・挑戦(評価)','キッカケづくり(評価)','凡事徹底(評価)','総合評価','総合コメント','面談メモ','議事録リンク','AI要約','AI良かった点','AI改善ポイント','AI次回アクション']);
+  }
+  
+  const lines = checklist.split('\n');
+  const scores = {};
+  lines.forEach(line => {
+    const match = line.match(/^(.+?):\s*(\d+\/\d+)/);
+    if (match) scores[match[1].trim()] = match[2];
+  });
+  const ranks = (categoryRanks || '').split(',');
+  
+  // AI評価を分割して保存
+  const aiParts = parseAISummary(aiSummary || '');
+  
+  sheet.appendRow([
+    date, clinic, staffName, evaluator || '',
+    scores['素直'] || '',
+    scores['行動スピード'] || '',
+    scores['振り返り・前進'] || '',
+    scores['継続・挑戦'] || '',
+    scores['キッカケづくり'] || '',
+    scores['凡事徹底'] || '',
+    ranks[0] || '',
+    ranks[1] || '',
+    ranks[2] || '',
+    ranks[3] || '',
+    ranks[4] || '',
+    ranks[5] || '',
+    totalRank || '',
+    totalComment || '',
+    memo || '',
+    docUrl,
+    aiParts.summary,
+    aiParts.good,
+    aiParts.improve,
+    aiParts.action
+  ]);
+}
+
+function parseAISummary(aiText) {
+  const result = { summary: '', good: '', improve: '', action: '' };
+  if (!aiText) return result;
+  
+  const summaryMatch = aiText.match(/■\s*面談要約[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const goodMatch = aiText.match(/■\s*良かった点[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const improveMatch = aiText.match(/■\s*改善ポイント[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const actionMatch = aiText.match(/■\s*次回アクション[^\n]*\n([\s\S]*?)(?=■|$)/);
+  
+  if (summaryMatch) result.summary = summaryMatch[1].trim();
+  if (goodMatch) result.good = goodMatch[1].trim();
+  if (improveMatch) result.improve = improveMatch[1].trim();
+  if (actionMatch) result.action = actionMatch[1].trim();
+  
+  return result;
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+
+  // === LINEからのメッセージ（ID取得用）===
+  if (data.events) {
+    try {
+      const ev = data.events[0];
+      if (ev && ev.source && ev.source.userId) {
+        const uid = ev.source.userId;
+        Logger.log('★userId: ' + uid);
+        PropertiesService.getScriptProperties().setProperty('LAST_USER_ID', uid);
+      }
+    } catch(err) {}
+    return ContentService.createTextOutput('ok');
+  }
+  // === ここまで（以下は評価保存。今まで通り）===
+
+  let selfEvalText = '';
+  try {
+    const selfEval = getSelfEvaluation(data.staff, data.clinic);
+    if (selfEval) {
+      selfEvalText = `素直: ${selfEval.素直}\n行動スピード: ${selfEval.行動スピード}\n振り返り・前進: ${selfEval.振り返り前進}\n継続・挑戦: ${selfEval.継続挑戦}\nキッカケづくり: ${selfEval.キッカケづくり}\n凡事徹底: ${selfEval.凡事徹底}\n頑張ったこと: ${selfEval.頑張ったこと}\n課題: ${selfEval.課題}`;
+    }
+  } catch(err) {
+    selfEvalText = '';
+  }
+
+  let aiSummary = '';
+  try {
+    aiSummary = generateAISummary(
+      data.transcript || '',
+      data.checklistDetail || '',
+      selfEvalText
+    );
+  } catch(err) {
+    aiSummary = 'AI評価の生成に失敗しました：' + err.message;
+  }
+
+  const url = saveToGoogleDocs(
+    data.clinic,
+    data.staff,
+    data.transcript || '',
+    data.checklistDetail || '',
+    data.memo || '',
+    data.evaluator || '',
+    data.aiRank || '',
+    data.categoryReasons || '',
+    data.managerRank || '',
+    data.managerComment || '',
+    aiSummary
+  );
+  
+  return ContentService.createTextOutput(JSON.stringify({url: url}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function generateAISummary(transcript, checklistDetail, selfEvaluation) {
+  const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  
+  const prompt = `以下は1on1面談の記録です。評価者の評価を主軸に、スタッフの自己評価を補足として参考にしながら、AIとして分析・フィードバックを生成してください。
+
+【文字起こし】
+${transcript}
+
+【評価者チェックリスト結果】
+${checklistDetail}
+
+【スタッフ自己評価（補足）】
+${selfEvaluation || 'なし'}
+
+以下の形式で日本語で回答してください：
+■ 面談要約（3〜5行）
+■ 良かった点
+■ 改善ポイント
+■ 次回アクション`;
+
+  const response = UrlFetchApp.fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
+  );
+  
+  const result = JSON.parse(response.getContentText());
+  return result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+}
+
+function testGemini() {
+  try {
+    const result = generateAISummary(
+      'テスト文字起こし：今月は接客の改善に取り組みました。',
+      '素直: 4/6\n行動スピード: 5/6\n振り返り・前進: 3/6',
+      'よく頑張れたと思います。'
+    );
+    Logger.log('結果: ' + result);
+  } catch(e) {
+    Logger.log('エラー: ' + e.message);
+  }
+}
+
+function testApiKey() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  Logger.log('APIキー: ' + key);
+}
+
+function getSelfEvaluation(staffName, clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('スタッフ自己評価');
+  const data = sheet.getDataRange().getValues();
+  
+  let bestMatch = null;
+  let bestDiff = Infinity;
+  const now = new Date();
+  
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][1] === staffName && data[i][2] === clinic) {
+      const formDate = new Date(data[i][3]);
+      const diff = Math.abs(formDate - now);
+      
+      if (diff < 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+        bestDiff = diff;
+        bestMatch = {
+          素直: data[i][4],
+          行動スピード: data[i][5],
+          振り返り前進: data[i][6],
+          継続挑戦: data[i][7],
+          キッカケづくり: data[i][8],
+          凡事徹底: data[i][9],
+          頑張ったこと: data[i][10],
+          課題: data[i][11]
+        };
+      }
+    }
+  }
+  return bestMatch;
+}
+
+function onFormSubmit(e) {
+  const sheet = e.range.getSheet();
+  const row = e.range.getRow();
+  const formId = '1kc-yNOdph3AG8BP98oJ6qEHq44xa249cuPT2YT-p-H4';
+  const responseUrl = `https://docs.google.com/forms/d/${formId}/edit#responses`;
+  
+  const maxCounts = [6, 6, 6, 6, 6, 7];
+  
+  for (let i = 0; i < 6; i++) {
+    const colIndex = 5 + i;
+    const cellValue = sheet.getRange(row, colIndex).getValue();
+    const checkedCount = cellValue ? cellValue.toString().split(',').length : 0;
+    sheet.getRange(row, 13 + i).setValue(checkedCount + '/' + maxCounts[i]);
+  }
+  
+  sheet.getRange(row, 19).setValue(responseUrl);
+}
+
+// === LINE: 保存されたuserIdを表示する（確認用）===
+function showLastUserId() {
+  const uid = PropertiesService.getScriptProperties().getProperty('LAST_USER_ID');
+  Logger.log('保存されたuserId: ' + (uid || '（まだありません。公式アカウントにLINEを送ってから実行してください）'));
+}
+ステップ2：保存して再デプロイ
+保存（Cmd+S）
+「デプロイ」→「デプロイを管理」→ 鉛筆マーク → バージョン「新バージョン」→「デプロイ」
+表示されるウェブアプリのURL（.../exec で終わるもの）をコピーしておく
+ここで一度止まってください。次のステップで、このURLをLINE側に貼り付ける作業をします。再デプロイまで終わって、URLがコピーできたら教えてください。 そうしたら、LINEのWebhook設定を1ステップずつ案内します（ここが最後の山場です）。
+
+エラーが発生しました。ダイアログを閉じてもう一度お試しください。
+
+6月25日
+
+GASデプロイエラーの原因を分析し、段階的な解決策を検討した。
+GASデプロイエラーの原因を分析し、段階的な解決策を検討した。
+GASのデプロイ画面でときどき出る、一時的なエラーです。コードが原因ではないことが多いので、落ち着いて対処しましょう。順番に試してください。
+
+まず、これを試す
+
+エラーのダイアログを「閉じる」で閉じる
+ページごと再読み込み（Cmd+R）でGASエディタを開き直す
+もう一度「デプロイ」→「デプロイを管理」→ 鉛筆マーク →「新バージョン」→「デプロイ」
+たいていは、この再読み込みで直ります。
+
+それでもダメなら
+
+念のため、貼り付けたコードがちゃんと保存されているか確認しましょう。エディタ上部の保存マーク（フロッピー）がグレーアウトしていれば保存済みです。まだ青く押せる状態なら、先に保存（Cmd+S）してからデプロイし直してください。
+
+まだダメなら
+
+少し時間をおく（GAS側が混んでいる場合があります）か、シークレットモードでGASエディタを開いてから再デプロイしてみてください。前にキャッシュが原因で動かなかったときと同じ対処です。
+
+ひとつ確認させてください。このエラーは、どの操作のときに出ましたか？
+
+コードを保存しようとしたとき
+「デプロイを管理」からデプロイしようとしたとき
+どちらのタイミングだったか教えてもらえると、原因を絞り込めます。あと、もしエラーダイアログに赤い文字などで追加のメッセージが出ていれば、それも教えてください。
+
+16:29:13
+エラー
+getMyUserId を実行しようとしましたが、プロジェクトを保存できませんでした。
+
+6月25日
+なるほど、原因がわかりました。「getMyUserId」という古い関数を実行しようとしているので、保存できていない状態で実行しようとしてエラーになっています。
+
+今のコードには getMyUserId はもう不要なので、気にしなくて大丈夫です。
+
+順番にやり直しましょう。
+
+まずコードを確認
+
+エディタの中身は、さっき貼り替えた新しいコードになっていますか？一番上が const SPREADSHEET_ID = ... から始まっていれば大丈夫です。
+
+次に保存
+
+Cmd+S を押して、保存できているか確認してください。エラーが出ずにフロッピーマークがグレーになれば保存済みです。
+
+保存できたら再デプロイ
+
+「デプロイ」→「デプロイを管理」→ 鉛筆マーク → バージョン「新バージョン」→「デプロイ」
+
+この順番で進めてみてください。保存が先で、デプロイは後です。
+
+保存できましたか？それとも保存の時点でもエラーが出ますか？
+
+構文エラー: SyntaxError: Unexpected end of input 行: 396 ファイル: 無題.gs
+
+6月25日
+構文エラーですね。コードの途中で終わってしまっている状態です。おそらく貼り付けたときに、最後の部分が切れてしまったと思われます。
+
+もう一度、全文を貼り替えましょう。
+
+手順
+
+エディタで全選択（Cmd+A）
+削除（Delete）
+下のコードを最初から最後まで全部コピーして貼り付ける
+保存（Cmd+S）
+javascript
+const SPREADSHEET_ID = '1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4';
+
+function doGet(e) {
+  const action = e.parameter.action;
+  if (action === 'getStaffList') return getStaffList(e.parameter.clinic);
+  if (action === 'getStaffDetail') return getStaffDetail(e.parameter.clinic, e.parameter.staff);
+  return HtmlService.createTemplateFromFile('index').evaluate()
+    .setTitle('カドモリ 1on1評価システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getStaffList(clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  const data = sheet.getDataRange().getDisplayValues();
+  const staffMap = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const staffName = row[2];
+    if (!staffName) continue;
+    if (!staffMap[staffName] || row[0] > staffMap[staffName].date) {
+      staffMap[staffName] = {
+        name: staffName, clinic: row[1], evaluator: row[3], date: row[0],
+        scores: { 素直: row[4], 行動スピード: row[5], 振り返り前進: row[6], 継続挑戦: row[7], キッカケづくり: row[8], 凡事徹底: row[9] },
+        totalRank: row[16], totalComment: row[17]
+      };
+    }
+  }
+  return ContentService.createTextOutput(JSON.stringify(Object.values(staffMap))).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getStaffDetail(clinic, staff) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  const data = sheet.getDataRange().getDisplayValues();
+  const history = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[2] !== staff) continue;
+    history.push({
+      date: row[0], clinic: row[1], evaluator: row[3],
+      scores: { 素直: row[4], 行動スピード: row[5], 振り返り前進: row[6], 継続挑戦: row[7], キッカケづくり: row[8], 凡事徹底: row[9] },
+      categoryRanks: { 素直: row[10], 行動スピード: row[11], 振り返り前進: row[12], 継続挑戦: row[13], キッカケづくり: row[14], 凡事徹底: row[15] },
+      totalRank: row[16], totalComment: row[17], memo: row[18], docUrl: row[19],
+      aiSummary: row[20] || '', aiGood: row[21] || '', aiImprove: row[22] || '', aiAction: row[23] || ''
+    });
+  }
+  history.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return ContentService.createTextOutput(JSON.stringify(history)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveToGoogleDocs(clinic, staffName, transcript, checklist, memo, evaluator, categoryRanks, categoryReasons, totalRank, totalComment, aiSummary) {
+  const date = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  const fileName = clinic + '_' + staffName + '_' + date;
+  const rootFolderName = 'カドモリ1on1記録';
+  let rootFolder;
+  const rootFolders = DriveApp.getFoldersByName(rootFolderName);
+  rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder(rootFolderName);
+  let clinicFolder;
+  const clinicFolders = rootFolder.getFoldersByName(clinic);
+  clinicFolder = clinicFolders.hasNext() ? clinicFolders.next() : rootFolder.createFolder(clinic);
+  let staffFolder;
+  const staffFolders = clinicFolder.getFoldersByName(staffName);
+  staffFolder = staffFolders.hasNext() ? staffFolders.next() : clinicFolder.createFolder(staffName);
+  const doc = DocumentApp.create(fileName);
+  const body = doc.getBody();
+  body.appendParagraph('■ 面談日: ' + date);
+  body.appendParagraph('■ 院名: ' + clinic);
+  body.appendParagraph('■ スタッフ名: ' + staffName);
+  body.appendParagraph('■ 評価者名: ' + (evaluator || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【文字起こし】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(transcript || '');
+  body.appendParagraph('');
+  body.appendParagraph('【チェックリスト結果】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(checklist || '');
+  body.appendParagraph('');
+  body.appendParagraph('【面談メモ】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(memo || 'なし');
+  body.appendParagraph('');
+  body.appendParagraph('【カテゴリ別評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  const categoryNames = ['素直','行動スピード','振り返り・前進','継続・挑戦','キッカケづくり','凡事徹底'];
+  const ranks = (categoryRanks || '').split(',');
+  const reasons = (categoryReasons || '').split('|');
+  categoryNames.forEach((name, i) => {
+    body.appendParagraph(name + ': ' + (ranks[i] || '') + '　理由: ' + (reasons[i] || ''));
+  });
+  body.appendParagraph('');
+  body.appendParagraph('【総合評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('評価: ' + (totalRank || ''));
+  body.appendParagraph('コメント: ' + (totalComment || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【AI評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(aiSummary || 'なし');
+  doc.saveAndClose();
+  const file = DriveApp.getFileById(doc.getId());
+  staffFolder.addFile(file);
+  DriveApp.getRootFolder().removeFile(file);
+  const docUrl = doc.getUrl();
+  saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary);
+  return docUrl;
+}
+
+function saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    sheet = ss.insertSheet(clinic);
+    sheet.appendRow(['面談日','院名','スタッフ名','評価者名','素直(点)','行動スピード(点)','振り返り・前進(点)','継続・挑戦(点)','キッカケづくり(点)','凡事徹底(点)','素直(評価)','行動スピード(評価)','振り返り・前進(評価)','継続・挑戦(評価)','キッカケづくり(評価)','凡事徹底(評価)','総合評価','総合コメント','面談メモ','議事録リンク','AI要約','AI良かった点','AI改善ポイント','AI次回アクション']);
+  }
+  const lines = checklist.split('\n');
+  const scores = {};
+  lines.forEach(line => {
+    const match = line.match(/^(.+?):\s*(\d+\/\d+)/);
+    if (match) scores[match[1].trim()] = match[2];
+  });
+  const ranks = (categoryRanks || '').split(',');
+  const aiParts = parseAISummary(aiSummary || '');
+  sheet.appendRow([
+    date, clinic, staffName, evaluator || '',
+    scores['素直'] || '', scores['行動スピード'] || '', scores['振り返り・前進'] || '',
+    scores['継続・挑戦'] || '', scores['キッカケづくり'] || '', scores['凡事徹底'] || '',
+    ranks[0] || '', ranks[1] || '', ranks[2] || '', ranks[3] || '', ranks[4] || '', ranks[5] || '',
+    totalRank || '', totalComment || '', memo || '', docUrl,
+    aiParts.summary, aiParts.good, aiParts.improve, aiParts.action
+  ]);
+}
+
+function parseAISummary(aiText) {
+  const result = { summary: '', good: '', improve: '', action: '' };
+  if (!aiText) return result;
+  const summaryMatch = aiText.match(/■\s*面談要約[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const goodMatch = aiText.match(/■\s*良かった点[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const improveMatch = aiText.match(/■\s*改善ポイント[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const actionMatch = aiText.match(/■\s*次回アクション[^\n]*\n([\s\S]*?)(?=■|$)/);
+  if (summaryMatch) result.summary = summaryMatch[1].trim();
+  if (goodMatch) result.good = goodMatch[1].trim();
+  if (improveMatch) result.improve = improveMatch[1].trim();
+  if (actionMatch) result.action = actionMatch[1].trim();
+  return result;
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT);
+}
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+
+  // === LINEからのメッセージ（ID取得用）===
+  if (data.events) {
+    try {
+      const ev = data.events[0];
+      if (ev && ev.source && ev.source.userId) {
+        const uid = ev.source.userId;
+        Logger.log('★userId: ' + uid);
+        PropertiesService.getScriptProperties().setProperty('LAST_USER_ID', uid);
+      }
+    } catch(err) {}
+    return ContentService.createTextOutput('ok');
+  }
+  // === ここまで（以下は評価保存。今まで通り）===
+
+  let selfEvalText = '';
+  try {
+    const selfEval = getSelfEvaluation(data.staff, data.clinic);
+    if (selfEval) {
+      selfEvalText = `素直: ${selfEval.素直}\n行動スピード: ${selfEval.行動スピード}\n振り返り・前進: ${selfEval.振り返り前進}\n継続・挑戦: ${selfEval.継続挑戦}\nキッカケづくり: ${selfEval.キッカケづくり}\n凡事徹底: ${selfEval.凡事徹底}\n頑張ったこと: ${selfEval.頑張ったこと}\n課題: ${selfEval.課題}`;
+    }
+  } catch(err) { selfEvalText = ''; }
+
+  let aiSummary = '';
+  try {
+    aiSummary = generateAISummary(data.transcript || '', data.checklistDetail || '', selfEvalText);
+  } catch(err) {
+    aiSummary = 'AI評価の生成に失敗しました：' + err.message;
+  }
+
+  const url = saveToGoogleDocs(
+    data.clinic, data.staff, data.transcript || '', data.checklistDetail || '',
+    data.memo || '', data.evaluator || '', data.categoryRanks || '',
+    data.categoryReasons || '', data.totalRank || '', data.totalComment || '', aiSummary
+  );
+  return ContentService.createTextOutput(JSON.stringify({url: url})).setMimeType(ContentService.MimeType.JSON);
+}
+
+function generateAISummary(transcript, checklistDetail, selfEvaluation) {
+  const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const prompt = `以下は1on1面談の記録です。評価者の評価を主軸に、スタッフの自己評価を補足として参考にしながら、AIとして分析・フィードバックを生成してください。
+
+【文字起こし】
+${transcript}
+
+【評価者チェックリスト結果】
+${checklistDetail}
+
+【スタッフ自己評価（補足）】
+${selfEvaluation || 'なし'}
+
+以下の形式で日本語で回答してください：
+■ 面談要約（3〜5行）
+■ 良かった点
+■ 改善ポイント
+■ 次回アクション`;
+  const response = UrlFetchApp.fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    { method: 'POST', contentType: 'application/json', payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+  );
+  const result = JSON.parse(response.getContentText());
+  return result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+}
+
+function testGemini() {
+  try {
+    const result = generateAISummary('テスト文字起こし：今月は接客の改善に取り組みました。', '素直: 4/6\n行動スピード: 5/6\n振り返り・前進: 3/6', 'よく頑張れたと思います。');
+    Logger.log('結果: ' + result);
+  } catch(e) { Logger.log('エラー: ' + e.message); }
+}
+
+function testApiKey() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  Logger.log('APIキー: ' + key);
+}
+
+function getSelfEvaluation(staffName, clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('スタッフ自己評価');
+  const data = sheet.getDataRange().getValues();
+  let bestMatch = null;
+  let bestDiff = Infinity;
+  const now = new Date();
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][1] === staffName && data[i][2] === clinic) {
+      const formDate = new Date(data[i][3]);
+      const diff = Math.abs(formDate - now);
+      if (diff < 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+        bestDiff = diff;
+        bestMatch = {
+          素直: data[i][4], 行動スピード: data[i][5], 振り返り前進: data[i][6],
+          継続挑戦: data[i][7], キッカケづくり: data[i][8], 凡事徹底: data[i][9],
+          頑張ったこと: data[i][10], 課題: data[i][11]
+        };
+      }
+    }
+  }
+  return bestMatch;
+}
+
+function onFormSubmit(e) {
+  const sheet = e.range.getSheet();
+  const row = e.range.getRow();
+  const formId = '1kc-yNOdph3AG8BP98oJ6qEHq44xa249cuPT2YT-p-H4';
+  const responseUrl = `https://docs.google.com/forms/d/${formId}/edit#responses`;
+  const maxCounts = [6, 6, 6, 6, 6, 7];
+  for (let i = 0; i < 6; i++) {
+    const cellValue = sheet.getRange(row, 5 + i).getValue();
+    const checkedCount = cellValue ? cellValue.toString().split(',').length : 0;
+    sheet.getRange(row, 13 + i).setValue(checkedCount + '/' + maxCounts[i]);
+  }
+  sheet.getRange(row, 19).setValue(responseUrl);
+}
+
+function showLastUserId() {
+  const uid = PropertiesService.getScriptProperties().getProperty('LAST_USER_ID');
+  Logger.log('保存されたuserId: ' + (uid || '（まだありません）'));
+}
+貼り付けて保存（Cmd+S）できたら教えてください。エラーが出なければ、すぐ再デプロイに進みます。
+
+できた
+
+6月25日
+では再デプロイに進みましょう。
+
+手順
+
+右上の「デプロイ」→「デプロイを管理」
+今あるデプロイの右の鉛筆マークをクリック
+バージョンを「新バージョン」に変更
+「デプロイ」を押す
+表示されるウェブアプリのURL（https://script.google.com/macros/s/...../exec で終わるもの）をコピーしておく
+URLは変わらないはずですが、念のためコピーしておいてください。
+
+デプロイできたら教えてください。次はそのURLをLINEのWebhook欄に登録する作業（1分くらいで終わります）に進みます。
+
+はいお願い
+
+6月25日
+では次のステップです。LINEの管理画面に戻ります。
+
+手順
+
+ブラウザで LINE Official Account Manager を開く
+https://manager.line.biz
+「カドモリ 評価通知（テスト）」のアカウントを選ぶ
+右上の「設定」をクリック
+左メニューから「Messaging API」を選ぶ
+「Webhook URL」という欄があるので、「編集」をクリック
+さっきコピーしたGASのURL（https://script.google.com/macros/s/....../exec）を貼り付ける
+「更新」を押す
+「検証」ボタンを押す → 「成功」と出ればOK
+「Webhookの利用」のトグルをオンにする
+ここまで進めてみてください。「検証」で成功が出たら教えてください。次はスマホでLINEを送ってIDを取得する、最後のステップに進みます。
+
+さっきコピーしたGASのURL（https://script.google.com/macros/s/....../exec）を貼り付ける
+保存して何も出てこないです
+
+6月25日
+「検証」ボタンは押しましたか？「更新」で保存した後、同じ画面に「検証」というボタンが出てくるはずです。それを押してみてください。
+
+押したら何と表示されましたか？
+
+「成功」と出た → 次のステップへ進めます
+「失敗」や「エラー**」が出た → その内容を教えてください
+わからなくなりました
+もう一度丁寧に教えてください
+
+6月25日
+わかりました。最初からゆっくり一緒にやりましょう。
+
+まず今、画面はどこが開いていますか？
+
+LINE Official Account Managerの画面
+GASのエディタ画面
+別の画面
+今どこにいるか教えてもらえれば、そこから続けて案内します。
+
+https://manager.line.biz/account/@053ikmzt
+
+6月25日
+ありがとうございます。では、ここから1ステップずつ進めましょう。
+
+今やること：Webhook URLを登録する
+
+ステップ1
+
+画面の右上に「設定」というボタンがあります。クリックしてください。
+
+クリックできたら「できた」と教えてください。
+
+スクリーンショット 2026-06-25 16.42.47.png
+保存ボタンを押しても検証ボタンがない
+
+6月25日
+画面が見えました。Webhook URLはすでに入力されていますね。
+
+「保存」ボタンを押してください。保存すると画面が更新されて、「検証」ボタンが現れるはずです。
+
+保存できたら、画面がどう変わったか教えてください。
+
+出てこないよ
+
+6月25日
+わかりました。この画面からは「検証」ボタンが出ない仕様に変わっているようです。検証は別の場所でやります。
+
+LINE Developersコンソールに移動しましょう。
+
+画面の一番下に「LINE Developersコンソール」というリンクが見えていますよね。それをクリックしてください。
+
+クリックできたら教えてください。
+
+検証したらこれが出てきました
+ボットサーバーから200以外のHTTPステータスコードが返されました。(302 Found)
+LINEプラットフォームから送信されたHTTP POSTリクエストに対してボットサーバーがステータスコード200を返すことを確認してください。詳しくは、Messaging APIリファレンスの[レスポンス](https://developers.line.biz/ja/reference/messaging-api/#response)を参照してください。
+
+6月25日
+進展しました！「検証」ボタンが見つかったんですね。
+
+エラーの意味を説明します。302 Found というのは「このURLは別の場所にリダイレクトされます」という意味で、GASのWebアプリによく起きる現象です。コードのミスではありません。
+
+これはGASのデプロイURLの末尾に関係しています。今登録しているURLを確認させてください。
+
+Webhook URLの欄に入っているURLは、こういう形になっていますか？
+
+https://script.google.com/macros/s/xxxxxxxxxx/exec
+末尾が /exec で終わっていれば正しいです。もし /dev で終わっていたり、末尾に何か余分な文字がついていたりしませんか？
+
+今Webhook URL欄に入っているURLを確認して教えてください。（セキュリティ上、URLの真ん中の長い部分は見せなくて大丈夫です。末尾が /exec かどうかだけ教えてください。）
+
+/execです
+
+6月25日
+ありがとうございます。末尾は合っています。
+
+では原因は別のところにあります。GASのWebアプリは、「全員がアクセス可能」という設定でデプロイされていないと、LINEからのリクエストを302でリダイレクトしてしまうことがあります。
+
+デプロイの設定を確認しましょう。
+
+GASエディタに戻って、こう進めてください。
+
+「デプロイ」→「デプロイを管理」
+今あるデプロイの鉛筆マークをクリック
+設定画面が開くので、以下を確認してください
+次のユーザーとして実行：「自分」
+アクセスできるユーザー：「全員」
+「全員」になっていますか？もし「自分のみ」や「組織内のユーザー」になっていたら、「全員」に変えて、バージョンを「新バージョン」にして「デプロイ」し直してください。
+
+設定はどうなっていましたか？
+
+できていました
+
+6月25日
+設定は正しいですね。では別の原因です。
+
+GASのWebアプリは、LINEからのPOSTリクエストに対して、ログインを求めるページにリダイレクトしてしまうことがあります。これが302の原因です。
+
+解決策は、GASのURLではなく、LINE Developersコンソール側でWebhookを設定することです。
+
+手順
+
+LINE Developersコンソールを開く
+https://developers.line.biz/console/
+「VEXUM」プロバイダーをクリック
+「カドモリ 評価通知（テスト）」チャネルをクリック
+上のタブから「Messaging API設定」を開く
+「Webhook URL」の欄に、GASのURLを入力して「更新」
+「Webhookの利用」をオンにする
+「検証」を押す
+manager.line.bizではなく、developers.line.bizの方で設定するのがポイントです。こちらの方が詳細な設定ができます。
+
+試してみてください。検証結果を教えてください。
+
+エラー
+
+ボットサーバーから200以外のHTTPステータスコードが返されました。(302 Found)
+LINEプラットフォームから送信されたHTTP POSTリクエストに対してボットサーバーがステータスコード200を返すことを確認してください。詳しくは、Messaging APIリファレンスの[レスポンス](https://developers.line.biz/ja/reference/messaging-api/#response)を参照してください。
+
+6月25日
+同じエラーが続いていますね。これはGASの仕様的な問題で、実はよく知られた現象です。
+
+原因はGASそのものにあります。 GASのWebアプリは、外部からPOSTリクエストが来たとき、一度Googleのログイン画面にリダイレクトしてしまうことがあります。これが302の正体です。
+
+解決策はコードに1行追加するだけです。LINEからのリクエストに対して、即座に200を返す処理を最初に入れます。
+
+GASエディタで、今の doPost 関数の一番最初を、下のように変えてください。全文で用意します。
+
+doPost の部分だけ差し替えます。今の doPost を探して、丸ごとこれに置き換えてください（他の関数は触らないでOKです）。
+
+javascript
+function doPost(e) {
+  // LINEの検証リクエストに即座に200を返す
+  if (!e || !e.postData) {
+    return ContentService.createTextOutput(JSON.stringify({status: 'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const data = JSON.parse(e.postData.contents);
+
+  // === LINEからのメッセージ（ID取得用）===
+  if (data.events) {
+    try {
+      const ev = data.events[0];
+      if (ev && ev.source && ev.source.userId) {
+        const uid = ev.source.userId;
+        Logger.log('★userId: ' + uid);
+        PropertiesService.getScriptProperties().setProperty('LAST_USER_ID', uid);
+      }
+    } catch(err) {}
+    return ContentService.createTextOutput(JSON.stringify({status: 'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  // === ここまで（以下は評価保存。今まで通り）===
+
+  let selfEvalText = '';
+  try {
+    const selfEval = getSelfEvaluation(data.staff, data.clinic);
+    if (selfEval) {
+      selfEvalText = `素直: ${selfEval.素直}\n行動スピード: ${selfEval.行動スピード}\n振り返り・前進: ${selfEval.振り返り前進}\n継続・挑戦: ${selfEval.継続挑戦}\nキッカケづくり: ${selfEval.キッカケづくり}\n凡事徹底: ${selfEval.凡事徹底}\n頑張ったこと: ${selfEval.頑張ったこと}\n課題: ${selfEval.課題}`;
+    }
+  } catch(err) { selfEvalText = ''; }
+
+  let aiSummary = '';
+  try {
+    aiSummary = generateAISummary(data.transcript || '', data.checklistDetail || '', selfEvalText);
+  } catch(err) {
+    aiSummary = 'AI評価の生成に失敗しました：' + err.message;
+  }
+
+  const url = saveToGoogleDocs(
+    data.clinic, data.staff, data.transcript || '', data.checklistDetail || '',
+    data.memo || '', data.evaluator || '', data.categoryRanks || '',
+    data.categoryReasons || '', data.totalRank || '', data.totalComment || '', aiSummary
+  );
+  return ContentService.createTextOutput(JSON.stringify({url: url}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+貼り替えたら、
+
+保存（Cmd+S）
+再デプロイ（デプロイを管理 → 鉛筆 → 新バージョン → デプロイ）
+LINE側で再度「検証」
+試してみてください。
+
+どこですか？無題gs？
+
+6月25日
+はい、無題.gsです。
+
+今の無題.gsの中に function doPost(e) { という行があります。その行から、対応する最後の } まで（doPost関数の全体）を選んで、さっきのコードに丸ごと置き換えてください。
+
+探し方
+
+Cmd+F（検索）で function doPost と入力すると、その行にジャンプできます。
+
+そこから下の } までがdoPost関数です。その範囲を全部選択して、さっきのコードに貼り替えてください。
+
+見つかりましたか？
+
+
+function doPost(e) { const data = JSON.parse(e.postData.contents); let selfEvalText = ''; try { const selfEval = getSelfEvaluation(data.staff, data.clinic); if (selfEval) { selfEvalText = `素直: ${selfEval.素直}\n行動スピード: ${selfEval.行動スピード}\n振り返り・前進: ${selfEval.振り返り前進}\n継続・挑戦: ${se
+
+pasted
+
+ここですか？
+
+6月25日
+はい、そこです。でも見てみると、さっき貼り替えたはずの新しいコードではなく、古いコードが残っています。前の全文貼り替えがうまく反映されていなかったようです。
+
+一番確実な方法でやり直しましょう。全文をもう一度貼り替えます。
+
+手順
+
+無題.gsを開いた状態で全選択（Cmd+A）
+削除（Delete）
+下のコードを全部コピーして貼り付け
+保存（Cmd+S）
+再デプロイ（デプロイを管理 → 鉛筆 → 新バージョン → デプロイ）
+javascript
+const SPREADSHEET_ID = '1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4';
+
+function doGet(e) {
+  const action = e.parameter.action;
+  if (action === 'getStaffList') return getStaffList(e.parameter.clinic);
+  if (action === 'getStaffDetail') return getStaffDetail(e.parameter.clinic, e.parameter.staff);
+  return HtmlService.createTemplateFromFile('index').evaluate()
+    .setTitle('カドモリ 1on1評価システム')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getStaffList(clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  const data = sheet.getDataRange().getDisplayValues();
+  const staffMap = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const staffName = row[2];
+    if (!staffName) continue;
+    if (!staffMap[staffName] || row[0] > staffMap[staffName].date) {
+      staffMap[staffName] = {
+        name: staffName, clinic: row[1], evaluator: row[3], date: row[0],
+        scores: { 素直: row[4], 行動スピード: row[5], 振り返り前進: row[6], 継続挑戦: row[7], キッカケづくり: row[8], 凡事徹底: row[9] },
+        totalRank: row[16], totalComment: row[17]
+      };
+    }
+  }
+  return ContentService.createTextOutput(JSON.stringify(Object.values(staffMap))).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getStaffDetail(clinic, staff) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(clinic);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  const data = sheet.getDataRange().getDisplayValues();
+  const history = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[2] !== staff) continue;
+    history.push({
+      date: row[0], clinic: row[1], evaluator: row[3],
+      scores: { 素直: row[4], 行動スピード: row[5], 振り返り前進: row[6], 継続挑戦: row[7], キッカケづくり: row[8], 凡事徹底: row[9] },
+      categoryRanks: { 素直: row[10], 行動スピード: row[11], 振り返り前進: row[12], 継続挑戦: row[13], キッカケづくり: row[14], 凡事徹底: row[15] },
+      totalRank: row[16], totalComment: row[17], memo: row[18], docUrl: row[19],
+      aiSummary: row[20] || '', aiGood: row[21] || '', aiImprove: row[22] || '', aiAction: row[23] || ''
+    });
+  }
+  history.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return ContentService.createTextOutput(JSON.stringify(history)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveToGoogleDocs(clinic, staffName, transcript, checklist, memo, evaluator, categoryRanks, categoryReasons, totalRank, totalComment, aiSummary) {
+  const date = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  const fileName = clinic + '_' + staffName + '_' + date;
+  const rootFolderName = 'カドモリ1on1記録';
+  let rootFolder;
+  const rootFolders = DriveApp.getFoldersByName(rootFolderName);
+  rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder(rootFolderName);
+  let clinicFolder;
+  const clinicFolders = rootFolder.getFoldersByName(clinic);
+  clinicFolder = clinicFolders.hasNext() ? clinicFolders.next() : rootFolder.createFolder(clinic);
+  let staffFolder;
+  const staffFolders = clinicFolder.getFoldersByName(staffName);
+  staffFolder = staffFolders.hasNext() ? staffFolders.next() : clinicFolder.createFolder(staffName);
+  const doc = DocumentApp.create(fileName);
+  const body = doc.getBody();
+  body.appendParagraph('■ 面談日: ' + date);
+  body.appendParagraph('■ 院名: ' + clinic);
+  body.appendParagraph('■ スタッフ名: ' + staffName);
+  body.appendParagraph('■ 評価者名: ' + (evaluator || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【文字起こし】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(transcript || '');
+  body.appendParagraph('');
+  body.appendParagraph('【チェックリスト結果】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(checklist || '');
+  body.appendParagraph('');
+  body.appendParagraph('【面談メモ】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(memo || 'なし');
+  body.appendParagraph('');
+  body.appendParagraph('【カテゴリ別評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  const categoryNames = ['素直','行動スピード','振り返り・前進','継続・挑戦','キッカケづくり','凡事徹底'];
+  const ranks = (categoryRanks || '').split(',');
+  const reasons = (categoryReasons || '').split('|');
+  categoryNames.forEach((name, i) => {
+    body.appendParagraph(name + ': ' + (ranks[i] || '') + '　理由: ' + (reasons[i] || ''));
+  });
+  body.appendParagraph('');
+  body.appendParagraph('【総合評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('評価: ' + (totalRank || ''));
+  body.appendParagraph('コメント: ' + (totalComment || ''));
+  body.appendParagraph('');
+  body.appendParagraph('【AI評価】').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph(aiSummary || 'なし');
+  doc.saveAndClose();
+  const file = DriveApp.getFileById(doc.getId());
+  staffFolder.addFile(file);
+  DriveApp.getRootFolder().removeFile(file);
+  const docUrl = doc.getUrl();
+  saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary);
+  return docUrl;
+}
+
+function saveToSpreadsheet(clinic, staffName, evaluator, date, checklist, memo, categoryRanks, totalRank, totalComment, docUrl, aiSummary) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(clinic);
+  if (!sheet) {
+    sheet = ss.insertSheet(clinic);
+    sheet.appendRow(['面談日','院名','スタッフ名','評価者名','素直(点)','行動スピード(点)','振り返り・前進(点)','継続・挑戦(点)','キッカケづくり(点)','凡事徹底(点)','素直(評価)','行動スピード(評価)','振り返り・前進(評価)','継続・挑戦(評価)','キッカケづくり(評価)','凡事徹底(評価)','総合評価','総合コメント','面談メモ','議事録リンク','AI要約','AI良かった点','AI改善ポイント','AI次回アクション']);
+  }
+  const lines = checklist.split('\n');
+  const scores = {};
+  lines.forEach(line => {
+    const match = line.match(/^(.+?):\s*(\d+\/\d+)/);
+    if (match) scores[match[1].trim()] = match[2];
+  });
+  const ranks = (categoryRanks || '').split(',');
+  const aiParts = parseAISummary(aiSummary || '');
+  sheet.appendRow([
+    date, clinic, staffName, evaluator || '',
+    scores['素直'] || '', scores['行動スピード'] || '', scores['振り返り・前進'] || '',
+    scores['継続・挑戦'] || '', scores['キッカケづくり'] || '', scores['凡事徹底'] || '',
+    ranks[0] || '', ranks[1] || '', ranks[2] || '', ranks[3] || '', ranks[4] || '', ranks[5] || '',
+    totalRank || '', totalComment || '', memo || '', docUrl,
+    aiParts.summary, aiParts.good, aiParts.improve, aiParts.action
+  ]);
+}
+
+function parseAISummary(aiText) {
+  const result = { summary: '', good: '', improve: '', action: '' };
+  if (!aiText) return result;
+  const summaryMatch = aiText.match(/■\s*面談要約[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const goodMatch = aiText.match(/■\s*良かった点[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const improveMatch = aiText.match(/■\s*改善ポイント[^\n]*\n([\s\S]*?)(?=■|$)/);
+  const actionMatch = aiText.match(/■\s*次回アクション[^\n]*\n([\s\S]*?)(?=■|$)/);
+  if (summaryMatch) result.summary = summaryMatch[1].trim();
+  if (goodMatch) result.good = goodMatch[1].trim();
+  if (improveMatch) result.improve = improveMatch[1].trim();
+  if (actionMatch) result.action = actionMatch[1].trim();
+  return result;
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT);
+}
+
+function doPost(e) {
+  if (!e || !e.postData) {
+    return ContentService.createTextOutput(JSON.stringify({status: 'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const data = JSON.parse(e.postData.contents);
+
+  // === LINEからのメッセージ（ID取得用）===
+  if (data.events) {
+    try {
+      const ev = data.events[0];
+      if (ev && ev.source && ev.source.userId) {
+        const uid = ev.source.userId;
+        Logger.log('★userId: ' + uid);
+        PropertiesService.getScriptProperties().setProperty('LAST_USER_ID', uid);
+      }
+    } catch(err) {}
+    return ContentService.createTextOutput(JSON.stringify({status: 'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  // === ここまで（以下は評価保存。今まで通り）===
+
+  let selfEvalText = '';
+  try {
+    const selfEval = getSelfEvaluation(data.staff, data.clinic);
+    if (selfEval) {
+      selfEvalText = `素直: ${selfEval.素直}\n行動スピード: ${selfEval.行動スピード}\n振り返り・前進: ${selfEval.振り返り前進}\n継続・挑戦: ${selfEval.継続挑戦}\nキッカケづくり: ${selfEval.キッカケづくり}\n凡事徹底: ${selfEval.凡事徹底}\n頑張ったこと: ${selfEval.頑張ったこと}\n課題: ${selfEval.課題}`;
+    }
+  } catch(err) { selfEvalText = ''; }
+
+  let aiSummary = '';
+  try {
+    aiSummary = generateAISummary(data.transcript || '', data.checklistDetail || '', selfEvalText);
+  } catch(err) {
+    aiSummary = 'AI評価の生成に失敗しました：' + err.message;
+  }
+
+  const url = saveToGoogleDocs(
+    data.clinic, data.staff, data.transcript || '', data.checklistDetail || '',
+    data.memo || '', data.evaluator || '', data.categoryRanks || '',
+    data.categoryReasons || '', data.totalRank || '', data.totalComment || '', aiSummary
+  );
+  return ContentService.createTextOutput(JSON.stringify({url: url}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function generateAISummary(transcript, checklistDetail, selfEvaluation) {
+  const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const prompt = `以下は1on1面談の記録です。評価者の評価を主軸に、スタッフの自己評価を補足として参考にしながら、AIとして分析・フィードバックを生成してください。
+
+【文字起こし】
+${transcript}
+
+【評価者チェックリスト結果】
+${checklistDetail}
+
+【スタッフ自己評価（補足）】
+${selfEvaluation || 'なし'}
+
+以下の形式で日本語で回答してください：
+■ 面談要約（3〜5行）
+■ 良かった点
+■ 改善ポイント
+■ 次回アクション`;
+  const response = UrlFetchApp.fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    { method: 'POST', contentType: 'application/json', payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+  );
+  const result = JSON.parse(response.getContentText());
+  return result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+}
+
+function testGemini() {
+  try {
+    const result = generateAISummary('テスト文字起こし：今月は接客の改善に取り組みました。', '素直: 4/6\n行動スピード: 5/6\n振り返り・前進: 3/6', 'よく頑張れたと思います。');
+    Logger.log('結果: ' + result);
+  } catch(e) { Logger.log('エラー: ' + e.message); }
+}
+
+function testApiKey() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  Logger.log('APIキー: ' + key);
+}
+
+function getSelfEvaluation(staffName, clinic) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('スタッフ自己評価');
+  const data = sheet.getDataRange().getValues();
+  let bestMatch = null;
+  let bestDiff = Infinity;
+  const now = new Date();
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][1] === staffName && data[i][2] === clinic) {
+      const formDate = new Date(data[i][3]);
+      const diff = Math.abs(formDate - now);
+      if (diff < 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+        bestDiff = diff;
+        bestMatch = {
+          素直: data[i][4], 行動スピード: data[i][5], 振り返り前進: data[i][6],
+          継続挑戦: data[i][7], キッカケづくり: data[i][8], 凡事徹底: data[i][9],
+          頑張ったこと: data[i][10], 課題: data[i][11]
+        };
+      }
+    }
+  }
+  return bestMatch;
+}
+
+function onFormSubmit(e) {
+  const sheet = e.range.getSheet();
+  const row = e.range.getRow();
+  const formId = '1kc-yNOdph3AG8BP98oJ6qEHq44xa249cuPT2YT-p-H4';
+  const responseUrl = `https://docs.google.com/forms/d/${formId}/edit#responses`;
+  const maxCounts = [6, 6, 6, 6, 6, 7];
+  for (let i = 0; i < 6; i++) {
+    const cellValue = sheet.getRange(row, 5 + i).getValue();
+    const checkedCount = cellValue ? cellValue.toString().split(',').length : 0;
+    sheet.getRange(row, 13 + i).setValue(checkedCount + '/' + maxCounts[i]);
+  }
+  sheet.getRange(row, 19).setValue(responseUrl);
+}
+
+function showLastUserId() {
+  const uid = PropertiesService.getScriptProperties().getProperty('LAST_USER_ID');
+  Logger.log('保存されたuserId: ' + (uid || '（まだありません）'));
+}
+貼り付けて保存できたら教えてください。
+
+構文エラー: SyntaxError: Unexpected end of input 行: 272 ファイル: 無題.gs
+
+6月25日
+コードが途中で切れてしまっています。チャット画面でコードが長すぎて、コピーしたときに最後まで取れていないのだと思います。
+
+別の方法で渡しましょう。ファイルを作って直接ダウンロードしてもらいます。
+
+
+コマンドを実行しました, ファイルを読み取りました
+コマンドを実行しました, ファイルを読み取りました
+このファイルをダウンロードして、中身を全部コピーしてGASに貼り付けてください。
+
+手順
+
+上のファイル（無題.gs）をクリックしてダウンロード
+テキストエディット（またはメモ帳）で開く
+全選択（Cmd+A）→ コピー（Cmd+C）
+GASエディタに戻って全選択（Cmd+A）→ 削除 → 貼り付け（Cmd+V）
+保存（Cmd+S）
+これで途中で切れる問題が解決するはずです。保存できたら教えてください。
+
+
+無題
+GS 
+デプロイできた
+
+6月25日
+お疲れさまです！では、LINE側で「検証」を押してみてください。
+
+手順
+
+LINE Developersコンソール（developers.line.biz）を開く
+「カドモリ 評価通知（テスト）」チャネル →「Messaging API設定」タブ
+Webhook URLの横の「検証」ボタンを押す
+結果を教えてください。「成功」が出れば次に進めます！
+
+作ったウェブアプリを開きたいです
+
+6月27日
+もちろんです。こちらのURLです。
+
+https://rkitaoka-blip.github.io/kadmori-evaluation/
+シークレットモードで開くと、キャッシュの影響を受けずに確認できます。
+
+開けましたか？
+
+キャッシュの影響とはなんですか？
+
+6月27日
+いい質問です。簡単に説明しますね。
+
+ブラウザは、一度開いたページのデータを**手元に一時保存（キャッシュ）**しています。次に同じページを開くとき、毎回サーバーから取得するのではなく、この保存データを使って素早く表示します。
+
+これは便利な仕組みなのですが、開発中は困ることがあります。 コードを修正して新しいバージョンをデプロイしても、ブラウザが「前に保存した古いデータ」を使って表示してしまうことがあるからです。つまり「直したのに画面が変わらない」という現象が起きます。
+
+シークレットモードは、キャッシュを使わず毎回サーバーから最新データを取得するので、「本当に最新の状態で動いているか」を確認するのに使っています。
+
+実際のところ、今の確認はシークレットモードでなくても大丈夫です。普通にブラウザで開いてみてください。
+
+https://rkitaoka-blip.github.io/kadmori-evaluation/
+開けましたか？
+
+A I評価を行ったウェブアプリです。モック？みたいなもの
+
+6月27日
+そうですね、今開いているのは評価を入力する側のアプリ（面談データを保存する画面）ですね。
+
+ダッシュボード（評価結果を見る側）は別のURLです。
+
+https://rkitaoka-blip.github.io/kadmori-evaluation/dashboard.html
+こちらを開いてみてください。さっきスコアバーが表示されていた画面です。
+
+ウェブアプリの解像度をもっと高めていきたいです
+それが終わったらLINEの連携に移りたいと思っています
+
+10:53
+良い流れですね。整理すると、今やっていたLINE Webhook検証はいったん保留にして、先にウェブアプリ（ダッシュボード／入力画面）の完成度を上げる、ということですね。承知しました。
+
+「解像度を高める」というのは、具体的にどのあたりが気になっていますか？いくつか方向性があるので、近いものを教えてください。
+
+見た目・デザイン（もっと洗練された印象にしたい、配色やレイアウトを整えたい）
+情報の見やすさ（前回お話しした、AI評価やコメントを今より分かりやすく表示したい）
+機能の充実（検索・絞り込み、グラフでの傾向表示、期間比較など）
+入力側の使いやすさ（面談記録を入れる画面の操作性）
+Q: 今回、まずどこから手を入れたいですか？
+A: 全部？
+
+10:54
+わかりました、全部やりましょう。ただ、一気に全部触ると確認が大変になるので、順番に進めます。これが一番効率がいい順番です。
+
+見た目・デザインの洗練 ― まず土台となる見た目を整えます。配色・カード・余白などを今より上質な印象に
+AI評価・コメントの表示充実 ― その整った見た目の中に、AI評価やカテゴリ別の理由コメントをしっかり収める
+検索・グラフなどの機能追加 ― 土台ができたところに、便利機能を足す
+入力画面の使いやすさ改善 ― 最後に、面談を入れる側の画面を整える
+まずは①見た目・デザインから着手します。今の実際のダッシュボードのコードを確認して、どこを良くできるか見てみます。
+
+
+View frontend-design skill before improving the dashboard's visual design
+View frontend-design skill before improving the dashboard's visual design
+スキルを確認しました。今のダッシュボードの実際のコードと見た目を見て、どう洗練させるか考えます。
+
+
+コマンドを実行しました, ファイルを表示しました
+コマンドを実行しました, ファイルを表示しました
+全体のコードと機能が把握できました。デザインの方向性を考えます。
+
+設計方針
+
+題材は「サロン・美容業界の人材評価」。現状はシステム的な事務感が強い見た目なので、サロンらしい上質さと、人事評価の信頼感を両立させたいです。
+
+色：サロンらしい温かみのあるトーンを基調に、もう少し深みを持たせます。現状の薄茶（
+#5c3d1e系）は良い方向性なので活かしつつ、もっと洗練された配色に絞ります
+タイポグラフィ：見出しに少し個性のある書体を入れ、本文は読みやすさ重視
+レイアウト：カードの情報密度を上げつつ、視覚的な階層をはっきりさせる
+シグネチャー：カテゴリスコアを「リング状のミニグラフ」にして、6カテゴリの強弱が一目で分かるようにする。これがこのダッシュボードらしい識別点になります
+実装します。
+
+これはClaude側ウィジェット用のガイドなので、今回作る実際のスタンドアロンHTMLファイル（GitHub Pagesで公開する独立ページ）には直接は当てはまりません。サロン業界向けの独自デザインとして組み立てます。
+
+設計案を固めます。
+
+カラー：素材は「サロン × 評価」。今のテラコッタ系のトーンは活かしつつ、背景をもう少し落ち着いた色にし、アクセントを1色に絞ります。
+
+背景：
+#FAF7F2（温かいオフホワイト）
+カード：
+#FFFFFF
+主テキスト：
+#2A2420（ほぼ黒の茶系）
+副テキスト：
+#8B8178
+アクセント：
+#9C5A3C（深いテラコッタ、サロンらしい温かみ）
+ランクS：
+#3D7A5C（深緑）／ランクC：
+#B5483A（赤茶）
+タイポグラフィ：見出しに明朝系（Noto Serif JP）を効かせて、サロンらしい上質さを演出。本文は読みやすいゴシックのまま。
+
+シグネチャー：カテゴリスコアを6角形のレーダーチャート風ミニグラフにし、一覧画面でもその人の「型」が一目で分かるようにします。
+
+実際にコードを書いて改善します。
+
+
+コマンドを実行しました, ファイルを作成しました
+コマンドを実行しました, ファイルを作成しました
+ダッシュボードのデザインを一新しました。実際にプレビューして確認します。
+
+
+コマンドを実行しました, ファイルを読み取りました
+コマンドを実行しました, ファイルを読み取りました
+デザインを一新しました。変えたポイントをお伝えします。
+
+配色 ― 背景を温かいオフホワイトに、アクセントを深いテラコッタ1色に絞りました。ランクのS/A/B/Cも、それぞれ緑・金・テラコッタ・赤茶と意味のある色分けにしています。
+
+見出しに明朝体 ― 「カドモリ AI人事評価」やスタッフ名、日付に明朝体（Noto Serif JP）を効かせて、サロンらしい上質さを出しています。
+
+6角形のミニグラフ（一覧画面） ― 一覧の各行に、6カテゴリのバランスを示す小さな六角形グラフを追加しました。バーを6本並べるより、その人の「型」がパッと見て分かります（大きく出ている辺＝得意分野）。
+
+カテゴリスコアをカード化（詳細画面） ― 前はチップ（小さなタグ）でしたが、グリッド状のカードに変更し、数値を大きく見せて高評価・低評価が一目で分かるようにしました。
+
+総合評価を丸いバッジに ― 詳細画面の総合ランクを、独立した円形バッジにして視認性を上げました。
+
+データの取得・表示の仕組みは変えていないので、今のスプレッドシートのデータがそのまま反映されます。
+
+ファイルを開いて、まずプレビューで見た目を確認してみてください。気に入ったら、GitHubの dashboard.html をこの内容に置き換えます（前回と同じく、ファイルの中身を全部コピーして、GitHub上で上書きする形です）。
+
+見た目はどうですか？方向性が合っていれば、入力画面（評価を入れる側）も同じテイストで揃えましょうか？
+
+
+Dashboard
+コード · HTML 
+コードをGitHubに書くのですか？
+
+10:59
+いえ、必ずしもコードを書く必要はありません。GitHubに反映する方法は2つあって、どちらでもできます。
+
+方法A：GitHub上で直接編集する（コードをいじる感覚はほぼ無し）
+
+GitHubで dashboard.html のファイルページを開く
+鉛筆マーク（編集）をクリック
+中身を全部選択して削除
+さっき渡したコードを全部貼り付ける
+一番下の「Commit changes」を押す
+これは「コードを書く」というより、さっき用意したコードをそのまま貼り替えるだけの作業です。今までGASのコードを貼り替えてきたのと同じやり方です。
+
+方法B：ダウンロードしてアップロードする（コードは一切見ない）
+
+さっき渡したファイル（dashboard.html）をダウンロード
+GitHubのリポジトリページを開く
+既存の dashboard.html を一度削除
+ダウンロードしたファイルをドラッグ＆ドロップでアップロード
+「Commit changes」を押す
+こちらはファイルの中身を見ずに、ファイルそのものを置き換えるやり方です。
+
+どちらでも結果は同じです。やりやすそうな方を選んでください。前回コードのコピペで途中で切れるトラブルがあったので、**方法B（ファイルをアップロード）**の方が確実かもしれません。
+
+どちらで進めますか？
+
+
+
+
+
+
+
+
+Claude は AI のため、誤りを含む可能性があります。回答内容は必ずご確認ください。
+
+
+Dashboard · HTML
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>カドモリ AI人事評価 ダッシュボード</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #FAF7F2;
+      --surface: #FFFFFF;
+      --line: #EBE4DA;
+      --line-soft: #F2ECE3;
+      --ink: #2A2420;
+      --ink-soft: #6B635A;
+      --ink-faint: #A39A8E;
+      --accent: #9C5A3C;
+      --accent-soft: #F3E6DC;
+      --accent-deep: #6F3E27;
+      --good: #3D7A5C;
+      --good-bg: #E4F0E9;
+      --warn: #B5483A;
+      --warn-bg: #F8E7E3;
+      --gold: #B0883A;
+      --gold-bg: #F7EFDC;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Hiragino Sans', sans-serif; background: #f9f6f2; color: #333; }
-    .app-header { padding: 14px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; background: white; position: sticky; top: 0; z-index: 10; }
-    .app-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: bold; color: #5c3d1e; }
-    .clinic-select { font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid #ddd; background: white; }
-    .main { padding: 20px; max-width: 800px; margin: 0 auto; }
+    body {
+      font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    .serif { font-family: 'Noto Serif JP', serif; }
+ 
+    .app-header {
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .app-title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .app-title .mark {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .app-title .mark svg { width: 14px; height: 14px; }
+    .app-title-text {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: 0.01em;
+    }
+    .app-title-sub {
+      font-size: 11px;
+      color: var(--ink-faint);
+      letter-spacing: 0.04em;
+    }
+    .clinic-select {
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .clinic-select:focus { outline: none; border-color: var(--accent); }
+ 
+    .main { padding: 28px 28px 60px; max-width: 860px; margin: 0 auto; }
     .page { display: none; }
     .page.active { display: block; }
-    .section-label { font-size: 12px; font-weight: bold; color: #888; margin-bottom: 12px; letter-spacing: 0.05em; }
-    .staff-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: white; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
-    .staff-row:hover { border-color: #5c3d1e; box-shadow: 0 2px 8px rgba(92,61,30,0.08); }
-    .avatar { width: 40px; height: 40px; border-radius: 50%; background: #f0e8de; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #5c3d1e; flex-shrink: 0; }
-    .staff-info { flex: 1; }
-    .staff-name { font-size: 15px; font-weight: bold; }
-    .staff-meta { font-size: 12px; color: #888; margin-top: 3px; }
-    .mini-bars { display: flex; flex-direction: column; gap: 4px; width: 150px; }
-    .mini-row { display: flex; align-items: center; gap: 6px; }
-    .mini-label { font-size: 10px; color: #aaa; width: 52px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mini-track { flex: 1; height: 4px; background: #f0e8de; border-radius: 2px; }
-    .mini-fill { height: 4px; border-radius: 2px; background: #7a5c3a; }
-    .mini-fill.full { background: #2d7a4f; }
-    .rank-badge { display: inline-block; font-size: 13px; font-weight: bold; padding: 4px 14px; border-radius: 20px; }
-    .rank-s { background: #d4edda; color: #155724; }
-    .rank-a { background: #d1ecf1; color: #0c5460; }
-    .rank-b { background: #fff3cd; color: #856404; }
-    .rank-c { background: #f8d7da; color: #721c24; }
-    .rank-none { background: #f0f0f0; color: #888; }
-    .arrow-icon { color: #ccc; font-size: 18px; }
-    .back-btn { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #888; cursor: pointer; margin-bottom: 16px; padding: 6px 0; }
-    .back-btn:hover { color: #5c3d1e; }
-    .detail-hero { background: white; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
-    .detail-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
-    .avatar-lg { width: 52px; height: 52px; border-radius: 50%; background: #f0e8de; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; color: #5c3d1e; flex-shrink: 0; }
-    .score-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-    .chip { font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 1px solid #eee; color: #888; background: #fafafa; }
-    .chip.hi { border-color: #2d7a4f; color: #2d7a4f; background: #f0faf4; }
-    .chip.lo { border-color: #c0392b; color: #c0392b; background: #fdf0ef; }
-    .history-block { background: white; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 14px; }
-    .history-item { padding: 16px 0; border-bottom: 1px solid #f5f0eb; }
+ 
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-faint);
+      margin-bottom: 16px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+ 
+    .staff-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+    .staff-row:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 16px rgba(156, 90, 60, 0.10);
+    }
+    .staff-row:active { transform: scale(0.997); }
+ 
+    .avatar {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: var(--accent-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--accent-deep);
+      flex-shrink: 0;
+    }
+    .staff-info { flex: 1; min-width: 0; }
+    .staff-name { font-size: 15px; font-weight: 700; color: var(--ink); }
+    .staff-meta { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+ 
+    .hexgrid { flex-shrink: 0; }
+ 
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 14px;
+      font-weight: 700;
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .rank-s { background: var(--good-bg); color: var(--good); }
+    .rank-a { background: var(--gold-bg); color: var(--gold); }
+    .rank-b { background: var(--accent-soft); color: var(--accent-deep); }
+    .rank-c { background: var(--warn-bg); color: var(--warn); }
+    .rank-none { background: var(--line-soft); color: var(--ink-faint); }
+ 
+    .arrow-icon { color: var(--ink-faint); font-size: 18px; flex-shrink: 0; }
+ 
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      cursor: pointer;
+      margin-bottom: 20px;
+      padding: 6px 0;
+    }
+    .back-btn:hover { color: var(--accent); }
+ 
+    .detail-hero {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .detail-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .avatar-lg {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: var(--accent-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700; color: var(--accent-deep);
+      flex-shrink: 0;
+    }
+    .detail-name { font-size: 19px; font-weight: 700; }
+    .detail-meta { font-size: 13px; color: var(--ink-faint); margin-top: 3px; }
+ 
+    .total-rank-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .total-rank-circle {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 21px; font-weight: 700;
+    }
+    .total-rank-label {
+      font-size: 10px;
+      color: var(--ink-faint);
+      letter-spacing: 0.06em;
+    }
+ 
+    .score-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink-faint);
+      margin-bottom: 14px;
+      letter-spacing: 0.06em;
+    }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .score-cell {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 12px 14px;
+      background: var(--line-soft);
+    }
+    .score-cell.hi { background: var(--good-bg); border-color: #cfe5da; }
+    .score-cell.lo { background: var(--warn-bg); border-color: #efd3cd; }
+    .score-cell-label {
+      font-size: 11px;
+      color: var(--ink-soft);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .score-cell-value {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .score-cell.hi .score-cell-value { color: var(--good); }
+    .score-cell.lo .score-cell-value { color: var(--warn); }
+ 
+    .history-block {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .history-item { padding: 20px 0; border-bottom: 1px solid var(--line-soft); }
+    .history-item:first-child { padding-top: 0; }
     .history-item:last-child { border-bottom: none; padding-bottom: 0; }
-    .history-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-    .history-date { font-size: 14px; font-weight: bold; color: #5c3d1e; }
-    .trend-up { font-size: 12px; color: #2d7a4f; }
-    .trend-same { font-size: 12px; color: #888; }
-    .trend-down { font-size: 12px; color: #c0392b; }
-    .ai-card { background: #fff8f3; border-radius: 10px; padding: 14px 16px; margin-top: 10px; border: 1px solid #f0e8de; }
-    .ai-label { font-size: 11px; font-weight: bold; color: #7a5c3a; margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
-    .ai-block { margin-bottom: 10px; }
+    .history-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .history-date {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .trend-up { font-size: 12px; font-weight: 500; color: var(--good); }
+    .trend-same { font-size: 12px; color: var(--ink-faint); }
+    .trend-down { font-size: 12px; font-weight: 500; color: var(--warn); }
+    .history-evaluator {
+      font-size: 12px;
+      color: var(--ink-faint);
+      margin-left: auto;
+    }
+ 
+    .ai-card {
+      background: var(--accent-soft);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-top: 12px;
+      border: 1px solid #ecd9ca;
+    }
+    .ai-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-deep);
+      margin-bottom: 12px;
+      letter-spacing: 0.04em;
+    }
+    .ai-block { margin-bottom: 12px; }
     .ai-block:last-child { margin-bottom: 0; }
-    .ai-block-title { font-size: 11px; font-weight: bold; color: #888; margin-bottom: 4px; }
-    .ai-block-text { font-size: 13px; color: #444; line-height: 1.7; white-space: pre-wrap; }
+    .ai-block-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      margin-bottom: 5px;
+    }
+    .ai-block-text {
+      font-size: 13px;
+      color: var(--ink);
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
     .action-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-    .action-tag { font-size: 12px; background: #e8f4fd; color: #1a6898; padding: 3px 10px; border-radius: 20px; }
-    .memo-box { border: 1px solid #eee; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 13px; color: #666; line-height: 1.7; background: #fafafa; }
-    .doc-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #7a5c3a; text-decoration: none; margin-top: 8px; }
+    .action-tag {
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface);
+      color: var(--accent-deep);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid #ecd9ca;
+    }
+    .no-ai-note {
+      font-size: 13px;
+      color: var(--ink-faint);
+      margin-top: 10px;
+    }
+    .memo-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.75;
+      background: var(--line-soft);
+    }
+    .doc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+      margin-top: 10px;
+    }
     .doc-link:hover { text-decoration: underline; }
-    .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
-    .error-msg { text-align: center; padding: 40px; color: #c0392b; font-size: 14px; }
-    .empty-msg { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+ 
+    .loading, .error-msg, .empty-msg {
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 14px;
+      color: var(--ink-faint);
+    }
+    .error-msg { color: var(--warn); }
   </style>
 </head>
 <body>
-
+ 
 <div class="app-header">
   <div class="app-title">
-    📊 カドモリ AI人事評価
+    <span class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l4-4 4 3 4-6 6 7"/></svg>
+    </span>
+    <div>
+      <div class="app-title-text serif">カドモリ AI人事評価</div>
+    </div>
   </div>
   <select class="clinic-select" id="clinicSelect" onchange="loadStaffList()">
     <option value="大阪院">大阪院</option>
     <option value="東京院">東京院</option>
   </select>
 </div>
-
+ 
 <div class="main">
   <div class="page active" id="list-page">
     <div class="section-label" id="list-label">スタッフ一覧</div>
-    <div id="staff-list"><div class="loading">読み込み中...</div></div>
+    <div id="staff-list"><div class="loading">読み込み中…</div></div>
   </div>
-
+ 
   <div class="page" id="detail-page">
-    <div class="back-btn" onclick="showList()">← 一覧に戻る</div>
-    <div id="detail-content"><div class="loading">読み込み中...</div></div>
+    <div class="back-btn" onclick="showList()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      一覧に戻る
+    </div>
+    <div id="detail-content"><div class="loading">読み込み中…</div></div>
   </div>
 </div>
-
+ 
 <script>
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbz26ZmnrB2O9kVIndBALlOA2uCEvs1NyVF4J7IbxGazlX4hiEgeHPAfpcW4skpbpXMkNw/exec';
-
+ 
+  const CATS6 = [
+    { key: '素直', label: '素直' },
+    { key: '行動スピード', label: '行動' },
+    { key: '振り返り前進', label: '振り返り' },
+    { key: '継続挑戦', label: '継続' },
+    { key: 'キッカケづくり', label: 'キッカケ' },
+    { key: '凡事徹底', label: '凡事' }
+  ];
+ 
   function getClinic() {
     return document.getElementById('clinicSelect').value;
   }
-
+ 
+  function parseScore(val, fallbackMax) {
+    const parts = String(val || '0/' + fallbackMax).split('/');
+    const num = parseInt(parts[0]) || 0;
+    const max = parseInt(parts[1]) || fallbackMax;
+    return { num, max, pct: max ? num / max : 0 };
+  }
+ 
+  function hexPoint(cx, cy, r, i) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+  }
+ 
+  function buildHexagon(scores, size) {
+    const cx = size / 2, cy = size / 2, rOuter = size / 2 - 3;
+    const maxes = [6, 6, 6, 6, 6, 7];
+    const dataPts = CATS6.map((c, i) => {
+      const { pct } = parseScore(scores[c.key], maxes[i]);
+      const r = rOuter * Math.max(pct, 0.06);
+      return hexPoint(cx, cy, r, i);
+    });
+    const outerPts = CATS6.map((c, i) => hexPoint(cx, cy, rOuter, i));
+    const dataPath = dataPts.map(p => p.join(',')).join(' ');
+    const outerPath = outerPts.map(p => p.join(',')).join(' ');
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <polygon points="${outerPath}" fill="none" stroke="#EBE4DA" stroke-width="1"/>
+      <polygon points="${dataPath}" fill="#9C5A3C" fill-opacity="0.22" stroke="#9C5A3C" stroke-width="1.5"/>
+    </svg>`;
+  }
+ 
   async function loadStaffList() {
     const clinic = getClinic();
     document.getElementById('list-label').textContent = clinic + ' ・ スタッフ一覧';
-    document.getElementById('staff-list').innerHTML = '<div class="loading">読み込み中...</div>';
-
+    document.getElementById('staff-list').innerHTML = '<div class="loading">読み込み中…</div>';
+ 
     try {
       const res = await fetch(`${GAS_URL}?action=getStaffList&clinic=${encodeURIComponent(clinic)}`);
       const data = await res.json();
-
+ 
       if (!data || data.length === 0) {
         document.getElementById('staff-list').innerHTML = '<div class="empty-msg">データがありません</div>';
         return;
       }
-
+ 
       document.getElementById('staff-list').innerHTML = data.map(s => {
         const initials = s.name.length >= 2 ? s.name[0] + s.name[1] : s.name;
         const scores = s.scores || {};
-        const cats = [
-          { label: '素直', val: scores['素直'] },
-          { label: '行動', val: scores['行動スピード'] },
-          { label: '凡事', val: scores['凡事徹底'] }
-        ];
-        const barsHtml = cats.map(c => {
-          const parts = (c.val || '0/6').split('/');
-          const pct = parts[1] ? Math.round(parseInt(parts[0]) / parseInt(parts[1]) * 100) : 0;
-          const isFull = pct === 100;
-          return `<div class="mini-row">
-            <span class="mini-label">${c.label}</span>
-            <div class="mini-track"><div class="mini-fill${isFull ? ' full' : ''}" style="width:${pct}%"></div></div>
-          </div>`;
-        }).join('');
-
+        const hexSvg = buildHexagon(scores, 44);
         const rankClass = getRankClass(s.totalRank);
         const dateStr = s.date ? String(s.date).substring(0, 10) : '-';
-
+ 
         return `<div class="staff-row" onclick="loadDetail('${s.name}')">
           <div class="avatar">${initials}</div>
           <div class="staff-info">
             <div class="staff-name">${s.name}</div>
             <div class="staff-meta">最終面談 ${dateStr} ・ 評価者：${s.evaluator || '-'}</div>
           </div>
-          <div class="mini-bars">${barsHtml}</div>
+          <div class="hexgrid">${hexSvg}</div>
           <span class="rank-badge ${rankClass}">${s.totalRank || '-'}</span>
-          <span class="arrow-icon">›</span>
+          <span class="arrow-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </span>
         </div>`;
       }).join('');
-
+ 
     } catch(err) {
       document.getElementById('staff-list').innerHTML = '<div class="error-msg">データの取得に失敗しました</div>';
     }
   }
-
+ 
   async function loadDetail(staffName) {
     const clinic = getClinic();
     document.getElementById('list-page').classList.remove('active');
     document.getElementById('detail-page').classList.add('active');
-    document.getElementById('detail-content').innerHTML = '<div class="loading">読み込み中...</div>';
-
+    document.getElementById('detail-content').innerHTML = '<div class="loading">読み込み中…</div>';
+ 
     try {
       const res = await fetch(`${GAS_URL}?action=getStaffDetail&clinic=${encodeURIComponent(clinic)}&staff=${encodeURIComponent(staffName)}`);
       const history = await res.json();
-
+ 
       if (!history || history.length === 0) {
         document.getElementById('detail-content').innerHTML = '<div class="empty-msg">データがありません</div>';
         return;
       }
-
+ 
       const latest = history[0];
       const initials = staffName.length >= 2 ? staffName[0] + staffName[1] : staffName;
       const scores = latest.scores || {};
-
-      const chipCategories = [
-        { label: '素直', val: scores['素直'], max: 6 },
-        { label: '行動スピード', val: scores['行動スピード'], max: 6 },
-        { label: '振り返り', val: scores['振り返り前進'], max: 6 },
-        { label: '継続・挑戦', val: scores['継続挑戦'], max: 6 },
-        { label: 'キッカケ', val: scores['キッカケづくり'], max: 6 },
-        { label: '凡事徹底', val: scores['凡事徹底'], max: 7 },
-      ];
-
-      const chipsHtml = chipCategories.map(c => {
-        const parts = (c.val || '0/' + c.max).split('/');
-        const num = parseInt(parts[0]) || 0;
-        const max = parseInt(parts[1]) || c.max;
+ 
+      const maxes = { '素直': 6, '行動スピード': 6, '振り返り前進': 6, '継続挑戦': 6, 'キッカケづくり': 6, '凡事徹底': 7 };
+      const labels = { '素直': '素直', '行動スピード': '行動スピード', '振り返り前進': '振り返り・前進', '継続挑戦': '継続・挑戦', 'キッカケづくり': 'キッカケづくり', '凡事徹底': '凡事徹底' };
+ 
+      const cellsHtml = Object.keys(maxes).map(key => {
+        const { num, max } = parseScore(scores[key], maxes[key]);
         const isFull = num === max;
-        const isLow = num <= Math.floor(max / 3);
-        const cls = isFull ? 'chip hi' : isLow ? 'chip lo' : 'chip';
-        return `<span class="${cls}">${c.label} ${c.val || '-'}</span>`;
+        const isLow = max > 0 && num <= Math.floor(max / 3);
+        const cls = isFull ? 'score-cell hi' : isLow ? 'score-cell lo' : 'score-cell';
+        return `<div class="${cls}">
+          <div class="score-cell-label">${labels[key]}</div>
+          <div class="score-cell-value">${scores[key] || '-'}</div>
+        </div>`;
       }).join('');
-
+ 
       const historyHtml = history.map((item, idx) => {
         const dateStr = String(item.date).substring(0, 10);
         const prev = history[idx + 1];
@@ -199,59 +3576,65 @@
           else if (diff < 0) trendHtml = `<span class="trend-down">↓ 前回比 ${diff}</span>`;
           else trendHtml = `<span class="trend-same">→ 前回と同じ</span>`;
         }
-
+ 
         const actionTags = item.aiAction
-          ? item.aiAction.split('\n').filter(l => l.trim().startsWith('*') || l.trim().startsWith('・') || l.trim().startsWith('-') || l.trim() !== '')
+          ? item.aiAction.split('\n').filter(l => l.trim() !== '')
               .slice(0, 3).map(l => `<span class="action-tag">${l.replace(/^[\*・\-\s]+/, '').substring(0, 30)}</span>`).join('')
           : '';
-
+ 
         return `<div class="history-item">
           <div class="history-header">
             <span class="history-date">${dateStr}</span>
-            <span class="rank-badge ${getRankClass(item.totalRank)}">${item.totalRank || '-'}</span>
+            <span class="rank-badge ${getRankClass(item.totalRank)}" style="width:28px;height:28px;font-size:12px;">${item.totalRank || '-'}</span>
             ${trendHtml}
-            <span style="font-size:12px;color:#aaa;">評価者：${item.evaluator || '-'}</span>
+            <span class="history-evaluator">評価者：${item.evaluator || '-'}</span>
           </div>
           ${item.aiSummary || item.aiGood || item.aiImprove || item.aiAction ? `
           <div class="ai-card">
-            <div class="ai-label">🤖 AI評価</div>
+            <div class="ai-label">AI評価</div>
             ${item.aiSummary ? `<div class="ai-block"><div class="ai-block-title">面談要約</div><div class="ai-block-text">${item.aiSummary}</div></div>` : ''}
             ${item.aiGood ? `<div class="ai-block"><div class="ai-block-title">良かった点</div><div class="ai-block-text">${item.aiGood}</div></div>` : ''}
+            ${item.aiImprove ? `<div class="ai-block"><div class="ai-block-title">改善ポイント</div><div class="ai-block-text">${item.aiImprove}</div></div>` : ''}
             ${item.aiAction ? `<div class="ai-block"><div class="ai-block-title">次回アクション</div><div class="action-tags">${actionTags}</div></div>` : ''}
-          </div>` : '<div style="font-size:13px;color:#aaa;margin-top:8px;">AI評価データなし（次回面談から記録されます）</div>'}
+          </div>` : '<div class="no-ai-note">AI評価データなし（次回面談から記録されます）</div>'}
           ${item.memo ? `<div class="memo-box">📝 ${item.memo}</div>` : ''}
-          ${item.docUrl ? `<a class="doc-link" href="${item.docUrl}" target="_blank">📄 議事録を開く</a>` : ''}
+          ${item.docUrl ? `<a class="doc-link" href="${item.docUrl}" target="_blank">議事録を開く ↗</a>` : ''}
         </div>`;
       }).join('');
-
+ 
+      const totalRankClass = getRankClass(latest.totalRank);
+ 
       document.getElementById('detail-content').innerHTML = `
         <div class="detail-hero">
           <div class="detail-top">
             <div class="avatar-lg">${initials}</div>
             <div style="flex:1;">
-              <div style="font-size:18px;font-weight:bold;">${staffName}</div>
-              <div style="font-size:13px;color:#888;margin-top:2px;">${clinic} ・ 評価者：${latest.evaluator || '-'}</div>
+              <div class="detail-name serif">${staffName}</div>
+              <div class="detail-meta">${clinic} ・ 評価者：${latest.evaluator || '-'}</div>
             </div>
-            <span class="rank-badge ${getRankClass(latest.totalRank)}" style="font-size:15px;padding:6px 18px;">総合 ${latest.totalRank || '-'}</span>
+            <div class="total-rank-box">
+              <span class="total-rank-circle ${totalRankClass}">${latest.totalRank || '-'}</span>
+              <span class="total-rank-label">総合評価</span>
+            </div>
           </div>
-          <div style="font-size:12px;color:#888;margin-bottom:8px;">カテゴリ別スコア（最新）</div>
-          <div class="score-chips">${chipsHtml}</div>
+          <div class="score-section-label">カテゴリ別スコア（最新）</div>
+          <div class="score-grid">${cellsHtml}</div>
         </div>
         <div class="history-block">
           <div class="section-label">面談履歴と定性評価</div>
           ${historyHtml}
         </div>`;
-
+ 
     } catch(err) {
       document.getElementById('detail-content').innerHTML = '<div class="error-msg">データの取得に失敗しました</div>';
     }
   }
-
+ 
   function showList() {
     document.getElementById('detail-page').classList.remove('active');
     document.getElementById('list-page').classList.add('active');
   }
-
+ 
   function getRankClass(rank) {
     if (rank === 'S') return 'rank-s';
     if (rank === 'A') return 'rank-a';
@@ -259,7 +3642,7 @@
     if (rank === 'C') return 'rank-c';
     return 'rank-none';
   }
-
+ 
   function calcTotal(scores) {
     if (!scores) return 0;
     return Object.values(scores).reduce((sum, v) => {
@@ -267,8 +3650,9 @@
       return sum + (parseInt(parts[0]) || 0);
     }, 0);
   }
-
+ 
   loadStaffList();
 </script>
 </body>
 </html>
+ 
