@@ -387,97 +387,72 @@
       width: 100%;
       position: relative;
       overflow: hidden;
-      background: #FDF4F0;
-      border-radius: 22px;
-      padding: 32px 26px 28px;
+      background: #FBF6F2;
+      border: 1px solid #EAD9CE;
+      border-radius: 14px;
+      padding: 30px 26px 24px;
       font-family: 'Noto Sans JP', sans-serif;
-      color: #6B4A42;
-    }
-    .staff-card .sc-deco {
-      position: absolute;
-      pointer-events: none;
+      color: #4A3B35;
     }
     .staff-card-header {
-      position: relative;
       text-align: center;
-      margin-bottom: 20px;
-      z-index: 1;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #E4D2C5;
+      padding-bottom: 16px;
     }
     .staff-card-header .sc-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: #FCE4DE;
-      color: #C2624C;
       font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      padding: 5px 14px;
-      border-radius: 20px;
-      margin-bottom: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #A97456;
     }
     .staff-card-header .sc-name {
       font-family: 'Noto Serif JP', serif;
-      font-size: 23px;
+      font-size: 22px;
       font-weight: 700;
-      color: #5C3D35;
+      color: #3E2E28;
+      margin-top: 8px;
     }
     .staff-card-header .sc-date {
       font-size: 12px;
-      color: #BC9088;
-      margin-top: 5px;
-    }
-    .staff-card-divider {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin: 18px 0;
-      z-index: 1;
-      position: relative;
-    }
-    .staff-card-divider .dot {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: #E8B8AC;
+      color: #9C8A80;
+      margin-top: 4px;
     }
     .staff-card-section {
-      position: relative;
-      background: #FFFFFF;
-      border-radius: 16px;
-      padding: 16px 18px 16px 50px;
-      margin-bottom: 12px;
-      z-index: 1;
-      box-shadow: 0 2px 0 rgba(194, 98, 76, 0.04);
+      margin-bottom: 16px;
     }
     .staff-card-section:last-of-type { margin-bottom: 0; }
+    .staff-card-section .sc-label-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
     .staff-card-section .sc-icon {
-      position: absolute;
-      left: 14px;
-      top: 16px;
-      width: 26px;
-      height: 26px;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
     }
     .staff-card-section .sc-label {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
-      color: #C2624C;
-      margin-bottom: 6px;
+      color: #8A5C42;
     }
     .staff-card-section .sc-text {
       font-size: 13.5px;
-      line-height: 1.85;
-      color: #5C4A45;
+      line-height: 1.75;
+      color: #544842;
       white-space: pre-wrap;
+      padding-left: 26px;
     }
     .staff-card-footer {
-      position: relative;
       text-align: center;
-      margin-top: 22px;
+      margin-top: 20px;
+      padding-top: 14px;
+      border-top: 1px solid #E4D2C5;
       font-size: 10px;
-      color: #D2A89E;
-      letter-spacing: 0.08em;
-      z-index: 1;
+      color: #B29A8C;
+      letter-spacing: 0.1em;
     }
 
     .loading, .error-msg, .empty-msg {
@@ -710,30 +685,10 @@
   }
 
   const SC_ICONS = {
-    summary: `<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="11" fill="#FCEAE5"/><path d="M9 13.5l2.4 2.4L17 10" stroke="#E8907A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    good: `<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="11" fill="#FCEAE5"/><path d="M13 7.5c.6 1.6 1.1 2.4 2.6 3 1.5.6 2.4 1 2.4 1s-.9.4-2.4 1c-1.5.6-2 1.4-2.6 3-.6-1.6-1.1-2.4-2.6-3-1.5-.6-2.4-1-2.4-1s.9-.4 2.4-1c1.5-.6 2-1.4 2.6-3z" fill="#E8907A"/></svg>`,
-    action: `<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="11" fill="#FCEAE5"/><path d="M9.5 8.5c2.2 0 4.5 1.6 4.5 4.5s-2.3 4.5-4.5 4.5" stroke="#E8907A" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M12 15.2l2 2.3-2 2.3" stroke="#E8907A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`
+    summary: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#A97456" stroke-width="2"/><path d="M12 8v4l3 2" stroke="#A97456" stroke-width="2" stroke-linecap="round"/></svg>`,
+    good: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 13l4 4 12-12" stroke="#A97456" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    action: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16M4 12h16" stroke="#A97456" stroke-width="2.2" stroke-linecap="round"/></svg>`
   };
-
-  function scTopDecor() {
-    return `
-      <svg class="sc-deco" viewBox="0 0 80 80" width="70" height="70" style="top:-14px; left:-14px;" fill="none">
-        <circle cx="40" cy="40" r="34" fill="#FCEAE5"/>
-        <path d="M40 22c1.6 4.4 3 6.6 7.2 8.2C51.4 31.8 54 33 54 33s-2.6 1.2-6.8 2.8C43 37.4 41.6 39.6 40 44c-1.6-4.4-3-6.6-7.2-8.2C28.6 34.2 26 33 26 33s2.6-1.2 6.8-2.8C37 28.6 38.4 26.4 40 22z" fill="#F7C9BC"/>
-      </svg>
-      <svg class="sc-deco" viewBox="0 0 60 60" width="46" height="46" style="top:6px; right:-8px;" fill="none">
-        <circle cx="30" cy="30" r="3" fill="#F0A793"/>
-        <circle cx="14" cy="44" r="2" fill="#F0A793"/>
-        <circle cx="46" cy="16" r="2.2" fill="#F0A793"/>
-      </svg>`;
-  }
-
-  function scBottomDecor() {
-    return `
-      <svg class="sc-deco" viewBox="0 0 90 70" width="76" height="60" style="bottom:-10px; right:-12px;" fill="none">
-        <path d="M70 60c8-2 12-9 10-16-2-7-9-10-15-7-3-9-12-14-20-10-7 3-10 11-7 18-7 1-12 7-11 14 1 7 8 11 15 9 3 6 10 9 16 6 5-2 8-8 7-13" fill="#FBE0D8"/>
-      </svg>`;
-  }
 
   function generateStaffCard(idx) {
     const item = window.__currentHistory[idx];
@@ -742,29 +697,28 @@
     const dateStr = String(item.date).substring(0, 10);
 
     const sections = [];
-    if (item.aiSummary) sections.push({ label: '今月のあなたへ', text: item.aiSummary, icon: SC_ICONS.summary });
     if (item.aiGood) sections.push({ label: 'よかったところ', text: item.aiGood, icon: SC_ICONS.good });
     if (item.aiAction) sections.push({ label: '次にやってみよう', text: item.aiAction, icon: SC_ICONS.action });
+    if (item.aiSummary) sections.push({ label: '今月のあなたへ', text: item.aiSummary, icon: SC_ICONS.summary });
 
     const sectionsHtml = sections.map(s => `
       <div class="staff-card-section">
-        <div class="sc-icon">${s.icon}</div>
-        <div class="sc-label">${s.label}</div>
+        <div class="sc-label-row">
+          <span class="sc-icon">${s.icon}</span>
+          <span class="sc-label">${s.label}</span>
+        </div>
         <div class="sc-text">${s.text}</div>
       </div>`).join('');
 
     const cardHtml = `
       <div class="staff-card" id="staffCardForExport">
-        ${scTopDecor()}
         <div class="staff-card-header">
-          <span class="sc-badge">${clinic} ・ 1on1だより</span>
-          <div class="sc-name">${staffName} さん</div>
-          <div class="sc-date">${dateStr} の面談から</div>
+          <div class="sc-badge">${clinic}</div>
+          <div class="sc-name">${staffName} 様</div>
+          <div class="sc-date">${dateStr} 面談レポート</div>
         </div>
-        <div class="staff-card-divider"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
         ${sectionsHtml}
-        ${scBottomDecor()}
-        <div class="staff-card-footer">カドモリ AI人事評価</div>
+        <div class="staff-card-footer">KADOMORI AI 1on1 EVALUATION</div>
       </div>`;
 
     window.__currentCardItem = { staffName, dateStr };
@@ -807,13 +761,11 @@
     const statusEl = document.getElementById('lineSendStatus');
     if (!el || !window.html2canvas) return;
 
-    const userId = PROMPT_USER_ID_FALLBACK();
-    if (!userId) return;
-
     statusEl.textContent = '送信中…';
+    statusEl.style.color = 'var(--ink-faint)';
 
     try {
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#FDF4F0' });
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#FBF6F2' });
       const imageBase64 = canvas.toDataURL('image/png');
 
       const res = await fetch(GAS_URL, {
@@ -822,8 +774,7 @@
         body: JSON.stringify({
           action: 'sendLineImage',
           imageBase64: imageBase64,
-          staffName: window.__currentStaffName,
-          userId: userId
+          staffName: window.__currentStaffName
         })
       });
       const result = await res.json();
@@ -832,18 +783,13 @@
         statusEl.textContent = 'LINEに送信しました';
         statusEl.style.color = '#3D7A5C';
       } else {
-        statusEl.textContent = '送信に失敗しました：' + (result.error || '不明なエラー');
+        statusEl.textContent = result.error || '送信に失敗しました';
         statusEl.style.color = '#B5483A';
       }
     } catch (err) {
       statusEl.textContent = '送信中にエラーが発生しました';
       statusEl.style.color = '#B5483A';
     }
-  }
-
-  function PROMPT_USER_ID_FALLBACK() {
-    const id = prompt('送信先スタッフのLINE userIdを入力してください（U で始まる文字列）');
-    return id && id.trim() ? id.trim() : null;
   }
 
   loadStaffList();
