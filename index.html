@@ -61,9 +61,13 @@
     <div style="margin-top: 10px;">
       <button class="btn-primary" id="startBtn">録音開始</button>
       <button class="btn-primary" id="stopBtn" disabled>録音停止してGoogle Docsに保存</button>
+      <button class="btn-primary" id="uploadBtn" type="button">録音ファイルをアップロード</button>
+      <input type="file" id="audioFileInput" accept="audio/*" style="display:none">
+      <button class="btn-primary" id="nextBtn" type="button">次へ</button>
     </div>
     <br>
     <textarea id="log" readonly placeholder="録音を開始すると文字起こしがここに表示されます"></textarea>
+    <div id="upload-status"></div>
     <div id="save-status"></div>
   </div>
 
@@ -143,13 +147,107 @@
   </div>
 
   <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz26ZmnrB2O9kVIndBALlOA2uCEvs1NyVF4J7IbxGazlX4hiEgeHPAfpcW4skpbpXMkNw/exec';
+
     const $startBtn = document.getElementById('startBtn');
     const $stopBtn = document.getElementById('stopBtn');
+    const $nextBtn = document.getElementById('nextBtn');
+    const $uploadBtn = document.getElementById('uploadBtn');
+    const $audioFileInput = document.getElementById('audioFileInput');
+    const $uploadStatus = document.getElementById('upload-status');
     const $log = document.getElementById('log');
     const $status = document.getElementById('status');
     const $saveStatus = document.getElementById('save-status');
     let rec = null;
     let logText = '';
+
+    $uploadBtn.onclick = () => $audioFileInput.click();
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    const UPLOAD_CHUNK_SIZE = Math.floor(8 * 1024 * 1024 / 3) * 3; // 8MB程度・base64の3バイト境界に合わせる
+    const UPLOAD_CONCURRENCY = 4; // 同時アップロード数
+
+    async function uploadChunk_(uploadId, index, file) {
+      const chunkBlob = file.slice(index * UPLOAD_CHUNK_SIZE, (index + 1) * UPLOAD_CHUNK_SIZE);
+      const base64Chunk = await blobToBase64(chunkBlob);
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'uploadAudioChunk', uploadId, chunkIndex: index, base64Chunk })
+      });
+      const result = JSON.parse(await res.text());
+      if (!result.success) throw new Error(result.error || 'アップロードに失敗しました');
+    }
+
+    async function uploadAllChunks_(uploadId, file, totalChunks) {
+      let nextIndex = 0;
+      let completed = 0;
+      const workers = new Array(Math.min(UPLOAD_CONCURRENCY, totalChunks)).fill(0).map(async () => {
+        while (nextIndex < totalChunks) {
+          const myIndex = nextIndex++;
+          await uploadChunk_(uploadId, myIndex, file);
+          completed++;
+          $uploadStatus.textContent = `アップロード中... (${completed}/${totalChunks})`;
+          $uploadStatus.style.color = '#ff8f00';
+        }
+      });
+      await Promise.all(workers);
+    }
+
+    $audioFileInput.onchange = async () => {
+      const file = $audioFileInput.files[0];
+      if (!file) return;
+
+      $uploadBtn.disabled = true;
+      const uploadId = 'up_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      const totalChunks = Math.ceil(file.size / UPLOAD_CHUNK_SIZE) || 1;
+
+      try {
+        await uploadAllChunks_(uploadId, file, totalChunks);
+
+        $uploadStatus.textContent = '文字起こし中...(ファイルが長いと数分かかります)';
+        const finishRes = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'finishAudioUpload',
+            uploadId,
+            totalChunks,
+            mimeType: file.type || 'audio/mpeg'
+          })
+        });
+        const rawText = await finishRes.text();
+        let result;
+        try {
+          result = JSON.parse(rawText);
+        } catch (parseErr) {
+          throw new Error('サーバーから予期しない応答: ' + rawText.substring(0, 200));
+        }
+        if (result.success) {
+          logText += new Date().toLocaleTimeString() + '\n' + result.text + '\n\n';
+          $log.value = logText;
+          $uploadStatus.textContent = '文字起こしが完了しました';
+          $uploadStatus.style.color = '#2e7d32';
+        } else {
+          $uploadStatus.textContent = result.error || '文字起こしに失敗しました';
+          $uploadStatus.style.color = '#e74c3c';
+        }
+      } catch (err) {
+        $uploadStatus.textContent = '文字起こし中にエラー: ' + err.message;
+        $uploadStatus.style.color = '#e74c3c';
+      } finally {
+        $uploadBtn.disabled = false;
+        $audioFileInput.value = '';
+      }
+    };
 
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(() => { console.log('マイク許可済み'); })
@@ -184,15 +282,14 @@
       $stopBtn.disabled = false;
     };
 
-    $stopBtn.onclick = () => {
-      if (rec) rec.stop();
-      $startBtn.disabled = false;
-      $stopBtn.disabled = true;
-      $status.textContent = '⏹ 録音停止';
-
+    function proceedToEvaluation() {
       const clinic = document.getElementById('clinicSelect').value;
       const staff = document.getElementById('staffName').value;
       const evaluator = document.getElementById('evaluatorName').value;
+      if (!clinic) { alert('院を選択してください'); return; }
+      if (!staff) { alert('スタッフ名を入力してください'); return; }
+      if (!evaluator) { alert('評価者名を入力してください'); return; }
+
       const transcript = $log.value;
       const memo = document.getElementById('memo').value;
 
@@ -222,6 +319,21 @@
       $saveStatus.textContent = '評価画面に移動します...';
       $saveStatus.style.color = '#ff8f00';
       window.location.href = 'page2.html';
+    }
+
+    $stopBtn.onclick = () => {
+      if (rec) rec.stop();
+      $startBtn.disabled = false;
+      $stopBtn.disabled = true;
+      $status.textContent = '⏹ 録音停止';
+      proceedToEvaluation();
+    };
+
+    $nextBtn.onclick = () => {
+      if (rec) rec.stop();
+      $startBtn.disabled = false;
+      $stopBtn.disabled = true;
+      proceedToEvaluation();
     };
 
     const categories = [6, 6, 6, 6, 6, 7];
