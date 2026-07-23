@@ -607,7 +607,7 @@
 
         const actionTags = item.aiAction
           ? item.aiAction.split('\n').filter(l => l.trim() !== '')
-              .slice(0, 3).map(l => `<span class="action-tag">${l.replace(/^[\*・\-\s]+/, '')}</span>`).join('')
+              .slice(0, 3).map(l => `<span class="action-tag">${l.replace(/^[\*・\-\s]+/, '').substring(0, 30)}</span>`).join('')
           : '';
 
         const hasAI = item.aiSummary || item.aiGood || item.aiImprove || item.aiAction;
