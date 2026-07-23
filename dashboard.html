@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カドモリ AI人事評価 ダッシュボード</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg: #FAF7F2;
+      --surface: #FFFFFF;
+      --line: #EBE4DA;
+      --line-soft: #F2ECE3;
+      --ink: #2A2420;
+      --ink-soft: #6B635A;
+      --ink-faint: #A39A8E;
+      --accent: #9C5A3C;
+      --accent-soft: #F3E6DC;
+      --accent-deep: #6F3E27;
+      --good: #3D7A5C;
+      --good-bg: #E4F0E9;
+      --warn: #B5483A;
+      --warn-bg: #F8E7E3;
+      --gold: #B0883A;
+      --gold-bg: #F7EFDC;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    .serif { font-family: 'Noto Serif JP', serif; }
+
+    .app-header {
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .app-title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .app-title .mark {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .app-title .mark svg { width: 14px; height: 14px; }
+    .app-title-text {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: 0.01em;
+    }
+    .clinic-select {
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .clinic-select:focus { outline: none; border-color: var(--accent); }
+
+    .main { padding: 28px 28px 60px; max-width: 860px; margin: 0 auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-faint);
+      margin-bottom: 16px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .staff-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+    .staff-row:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 16px rgba(156, 90, 60, 0.10);
+    }
+    .staff-row:active { transform: scale(0.997); }
+
+    .avatar {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: var(--accent-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--accent-deep);
+      flex-shrink: 0;
+    }
+    .staff-info { flex: 1; min-width: 0; }
+    .staff-name { font-size: 15px; font-weight: 700; color: var(--ink); }
+    .staff-meta { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 14px;
+      font-weight: 700;
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .rank-s { background: var(--good-bg); color: var(--good); }
+    .rank-a { background: var(--gold-bg); color: var(--gold); }
+    .rank-b { background: var(--accent-soft); color: var(--accent-deep); }
+    .rank-c { background: var(--warn-bg); color: var(--warn); }
+    .rank-none { background: var(--line-soft); color: var(--ink-faint); }
+
+    .arrow-icon { color: var(--ink-faint); font-size: 18px; flex-shrink: 0; }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      cursor: pointer;
+      margin-bottom: 20px;
+      padding: 6px 0;
+    }
+    .back-btn:hover { color: var(--accent); }
+
+    .detail-hero {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .detail-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .avatar-lg {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: var(--accent-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700; color: var(--accent-deep);
+      flex-shrink: 0;
+    }
+    .detail-name { font-size: 19px; font-weight: 700; }
+    .detail-meta { font-size: 13px; color: var(--ink-faint); margin-top: 3px; }
+
+    .total-rank-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .total-rank-circle {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 21px; font-weight: 700;
+    }
+    .total-rank-label {
+      font-size: 10px;
+      color: var(--ink-faint);
+      letter-spacing: 0.06em;
+    }
+
+    .score-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink-faint);
+      margin-bottom: 14px;
+      letter-spacing: 0.06em;
+    }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .score-cell {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 12px 14px;
+      background: var(--line-soft);
+    }
+    .score-cell.hi { background: var(--good-bg); border-color: #cfe5da; }
+    .score-cell.lo { background: var(--warn-bg); border-color: #efd3cd; }
+    .score-cell-label {
+      font-size: 11px;
+      color: var(--ink-soft);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .score-cell-value {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .score-cell.hi .score-cell-value { color: var(--good); }
+    .score-cell.lo .score-cell-value { color: var(--warn); }
+
+    .history-block {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .history-item { padding: 20px 0; border-bottom: 1px solid var(--line-soft); }
+    .history-item:first-child { padding-top: 0; }
+    .history-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .history-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .history-date {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .trend-up { font-size: 12px; font-weight: 500; color: var(--good); }
+    .trend-same { font-size: 12px; color: var(--ink-faint); }
+    .trend-down { font-size: 12px; font-weight: 500; color: var(--warn); }
+    .history-evaluator {
+      font-size: 12px;
+      color: var(--ink-faint);
+      margin-left: auto;
+    }
+
+    .ai-card {
+      background: var(--accent-soft);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-top: 12px;
+      border: 1px solid #ecd9ca;
+    }
+    .ai-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-deep);
+      margin-bottom: 12px;
+      letter-spacing: 0.04em;
+    }
+    .ai-block { margin-bottom: 12px; }
+    .ai-block:last-child { margin-bottom: 0; }
+    .ai-block-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      margin-bottom: 5px;
+    }
+    .ai-block-text {
+      font-size: 13px;
+      color: var(--ink);
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
+    .action-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .action-tag {
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface);
+      color: var(--accent-deep);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid #ecd9ca;
+    }
+    .no-ai-note {
+      font-size: 13px;
+      color: var(--ink-faint);
+      margin-top: 10px;
+    }
+    .memo-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.75;
+      background: var(--line-soft);
+    }
+    .doc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+      margin-top: 10px;
+    }
+    .doc-link:hover { text-decoration: underline; }
+
+    .gen-card-btn {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent-deep);
+      background: var(--accent-soft);
+      border: 1px solid #ecd9ca;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .gen-card-btn:hover { background: #ecd9ca; }
+
+    .card-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(42, 36, 32, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      padding: 24px;
+    }
+    .card-modal-box {
+      background: var(--surface);
+      border-radius: 18px;
+      padding: 20px;
+      max-width: 420px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .card-modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .card-modal-actions button {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 11px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-family: inherit;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+    }
+    .card-modal-actions button.primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+    }
+
+    .staff-card {
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      background: #FBF6F2;
+      border: 1px solid #EAD9CE;
+      border-radius: 14px;
+      padding: 30px 26px 24px;
+      font-family: 'Noto Sans JP', sans-serif;
+      color: #4A3B35;
+    }
+    .staff-card-header {
+      text-align: center;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #E4D2C5;
+      padding-bottom: 16px;
+    }
+    .staff-card-header .sc-badge {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #A97456;
+    }
+    .staff-card-header .sc-name {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #3E2E28;
+      margin-top: 8px;
+    }
+    .staff-card-header .sc-date {
+      font-size: 12px;
+      color: #9C8A80;
+      margin-top: 4px;
+    }
+    .staff-card-section {
+      margin-bottom: 16px;
+    }
+    .staff-card-section:last-of-type { margin-bottom: 0; }
+    .staff-card-section .sc-label-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .staff-card-section .sc-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .staff-card-section .sc-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #8A5C42;
+    }
+    .staff-card-section .sc-text {
+      font-size: 13.5px;
+      line-height: 1.75;
+      color: #544842;
+      white-space: pre-wrap;
+      padding-left: 26px;
+    }
+    .staff-card-footer {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 14px;
+      border-top: 1px solid #E4D2C5;
+      font-size: 10px;
+      color: #B29A8C;
+      letter-spacing: 0.1em;
+    }
+
+    .loading, .error-msg, .empty-msg {
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 14px;
+      color: var(--ink-faint);
+    }
+    .error-msg { color: var(--warn); }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-title">
+    <span class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l4-4 4 3 4-6 6 7"/></svg>
+    </span>
+    <div>
+      <div class="app-title-text serif">カドモリ AI人事評価</div>
+    </div>
+  </div>
+  <select class="clinic-select" id="clinicSelect" onchange="loadStaffList()">
+    <option value="大阪院">大阪院</option>
+    <option value="東京院">東京院</option>
+  </select>
+</div>
+
+<div class="main">
+  <div class="page active" id="list-page">
+    <div class="section-label" id="list-label">スタッフ一覧</div>
+    <div id="staff-list"><div class="loading">読み込み中…</div></div>
+  </div>
+
+  <div class="page" id="detail-page">
+    <div class="back-btn" onclick="showList()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      一覧に戻る
+    </div>
+    <div id="detail-content"><div class="loading">読み込み中…</div></div>
+  </div>
+</div>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz26ZmnrB2O9kVIndBALlOA2uCEvs1NyVF4J7IbxGazlX4hiEgeHPAfpcW4skpbpXMkNw/exec';
+
+  const CATS6 = [
+    { key: '素直', label: '素直' },
+    { key: '行動スピード', label: '行動' },
+    { key: '振り返り前進', label: '振り返り' },
+    { key: '継続挑戦', label: '継続' },
+    { key: 'キッカケづくり', label: 'キッカケ' },
+    { key: '凡事徹底', label: '凡事' }
+  ];
+
+  function getClinic() {
+    return document.getElementById('clinicSelect').value;
+  }
+
+  function parseScore(val, fallbackMax) {
+    const parts = String(val || '0/' + fallbackMax).split('/');
+    const num = parseInt(parts[0]) || 0;
+    const max = parseInt(parts[1]) || fallbackMax;
+    return { num, max, pct: max ? num / max : 0 };
+  }
+
+  async function loadStaffList() {
+    const clinic = getClinic();
+    document.getElementById('list-label').textContent = clinic + ' ・ スタッフ一覧';
+    document.getElementById('staff-list').innerHTML = '<div class="loading">読み込み中…</div>';
+
+    try {
+      const res = await fetch(`${GAS_URL}?action=getStaffList&clinic=${encodeURIComponent(clinic)}`);
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        document.getElementById('staff-list').innerHTML = '<div class="empty-msg">データがありません</div>';
+        return;
+      }
+
+      document.getElementById('staff-list').innerHTML = data.map(s => {
+        const initials = s.name.length >= 2 ? s.name[0] + s.name[1] : s.name;
+        const rankClass = getRankClass(s.totalRank);
+        const dateStr = s.date ? String(s.date).substring(0, 10) : '-';
+
+        return `<div class="staff-row" onclick="loadDetail('${s.name}')">
+          <div class="avatar">${initials}</div>
+          <div class="staff-info">
+            <div class="staff-name">${s.name}</div>
+            <div class="staff-meta">最終面談 ${dateStr} ・ 評価者：${s.evaluator || '-'}</div>
+          </div>
+          <span class="rank-badge ${rankClass}">${s.totalRank || '-'}</span>
+          <span class="arrow-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </span>
+        </div>`;
+      }).join('');
+
+    } catch(err) {
+      document.getElementById('staff-list').innerHTML = '<div class="error-msg">データの取得に失敗しました</div>';
+    }
+  }
+
+  async function loadDetail(staffName) {
+    const clinic = getClinic();
+    document.getElementById('list-page').classList.remove('active');
+    document.getElementById('detail-page').classList.add('active');
+    document.getElementById('detail-content').innerHTML = '<div class="loading">読み込み中…</div>';
+
+    try {
+      const res = await fetch(`${GAS_URL}?action=getStaffDetail&clinic=${encodeURIComponent(clinic)}&staff=${encodeURIComponent(staffName)}`);
+      const history = await res.json();
+
+      if (!history || history.length === 0) {
+        document.getElementById('detail-content').innerHTML = '<div class="empty-msg">データがありません</div>';
+        return;
+      }
+
+      const latest = history[0];
+      const initials = staffName.length >= 2 ? staffName[0] + staffName[1] : staffName;
+      const scores = latest.scores || {};
+
+      const maxes = { '素直': 6, '行動スピード': 6, '振り返り前進': 6, '継続挑戦': 6, 'キッカケづくり': 6, '凡事徹底': 7 };
+      const labels = { '素直': '素直', '行動スピード': '行動スピード', '振り返り前進': '振り返り・前進', '継続挑戦': '継続・挑戦', 'キッカケづくり': 'キッカケづくり', '凡事徹底': '凡事徹底' };
+
+      const cellsHtml = Object.keys(maxes).map(key => {
+        const { num, max } = parseScore(scores[key], maxes[key]);
+        const isFull = num === max;
+        const isLow = max > 0 && num <= Math.floor(max / 3);
+        const cls = isFull ? 'score-cell hi' : isLow ? 'score-cell lo' : 'score-cell';
+        return `<div class="${cls}">
+          <div class="score-cell-label">${labels[key]}</div>
+          <div class="score-cell-value">${scores[key] || '-'}</div>
+        </div>`;
+      }).join('');
+
+      window.__currentHistory = history;
+      window.__currentStaffName = staffName;
+
+      const historyHtml = history.map((item, idx) => {
+        const dateStr = String(item.date).substring(0, 10);
+        const prev = history[idx + 1];
+        let trendHtml = '';
+        if (prev) {
+          const currTotal = calcTotal(item.scores);
+          const prevTotal = calcTotal(prev.scores);
+          const diff = currTotal - prevTotal;
+          if (diff > 0) trendHtml = `<span class="trend-up">↑ 前回比 +${diff}</span>`;
+          else if (diff < 0) trendHtml = `<span class="trend-down">↓ 前回比 ${diff}</span>`;
+          else trendHtml = `<span class="trend-same">→ 前回と同じ</span>`;
+        }
+
+        const actionTags = item.aiAction
+          ? item.aiAction.split('\n').filter(l => l.trim() !== '')
+              .slice(0, 3).map(l => `<span class="action-tag">${l.replace(/^[\*・\-\s]+/, '').substring(0, 30)}</span>`).join('')
+          : '';
+
+        const hasAI = item.aiSummary || item.aiGood || item.aiImprove || item.aiAction;
+
+        return `<div class="history-item">
+          <div class="history-header">
+            <span class="history-date">${dateStr}</span>
+            <span class="rank-badge ${getRankClass(item.totalRank)}" style="width:28px;height:28px;font-size:12px;">${item.totalRank || '-'}</span>
+            ${trendHtml}
+            <span class="history-evaluator">評価者：${item.evaluator || '-'}</span>
+          </div>
+          ${hasAI ? `
+          <div class="ai-card">
+            <div class="ai-label">AI評価</div>
+            ${item.aiSummary ? `<div class="ai-block"><div class="ai-block-title">面談要約</div><div class="ai-block-text">${item.aiSummary}</div></div>` : ''}
+            ${item.aiGood ? `<div class="ai-block"><div class="ai-block-title">良かった点</div><div class="ai-block-text">${item.aiGood}</div></div>` : ''}
+            ${item.aiImprove ? `<div class="ai-block"><div class="ai-block-title">改善ポイント</div><div class="ai-block-text">${item.aiImprove}</div></div>` : ''}
+            ${item.aiAction ? `<div class="ai-block"><div class="ai-block-title">次回アクション</div><div class="action-tags">${actionTags}</div></div>` : ''}
+          </div>` : '<div class="no-ai-note">AI評価データなし（次回面談から記録されます）</div>'}
+          ${item.memo ? `<div class="memo-box">📝 ${item.memo}</div>` : ''}
+          <div style="display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            ${item.docUrl ? `<a class="doc-link" href="${item.docUrl}" target="_blank" style="margin-top:0;">議事録を開く ↗</a>` : ''}
+            ${hasAI ? `<button class="gen-card-btn" onclick="generateStaffCard(${idx})">スタッフ向け評価カードを生成</button>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+      const totalRankClass = getRankClass(latest.totalRank);
+
+      document.getElementById('detail-content').innerHTML = `
+        <div class="detail-hero">
+          <div class="detail-top">
+            <div class="avatar-lg">${initials}</div>
+            <div style="flex:1;">
+              <div class="detail-name serif">${staffName}</div>
+              <div class="detail-meta">${clinic} ・ 評価者：${latest.evaluator || '-'}</div>
+            </div>
+            <div class="total-rank-box">
+              <span class="total-rank-circle ${totalRankClass}">${latest.totalRank || '-'}</span>
+              <span class="total-rank-label">総合評価</span>
+            </div>
+          </div>
+          <div class="score-section-label">カテゴリ別スコア（最新）</div>
+          <div class="score-grid">${cellsHtml}</div>
+        </div>
+        <div class="history-block">
+          <div class="section-label">面談履歴と定性評価</div>
+          ${historyHtml}
+        </div>`;
+
+    } catch(err) {
+      document.getElementById('detail-content').innerHTML = '<div class="error-msg">データの取得に失敗しました</div>';
+    }
+  }
+
+  function showList() {
+    document.getElementById('detail-page').classList.remove('active');
+    document.getElementById('list-page').classList.add('active');
+  }
+
+  function getRankClass(rank) {
+    if (rank === 'S') return 'rank-s';
+    if (rank === 'A') return 'rank-a';
+    if (rank === 'B') return 'rank-b';
+    if (rank === 'C') return 'rank-c';
+    return 'rank-none';
+  }
+
+  function calcTotal(scores) {
+    if (!scores) return 0;
+    return Object.values(scores).reduce((sum, v) => {
+      const parts = String(v || '0').split('/');
+      return sum + (parseInt(parts[0]) || 0);
+    }, 0);
+  }
+
+  const SC_ICONS = {
+    summary: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#A97456" stroke-width="2"/><path d="M12 8v4l3 2" stroke="#A97456" stroke-width="2" stroke-linecap="round"/></svg>`,
+    good: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 13l4 4 12-12" stroke="#A97456" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    action: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16M4 12h16" stroke="#A97456" stroke-width="2.2" stroke-linecap="round"/></svg>`
+  };
+
+  function generateStaffCard(idx) {
+    const item = window.__currentHistory[idx];
+    const staffName = window.__currentStaffName;
+    const clinic = getClinic();
+    const dateStr = String(item.date).substring(0, 10);
+
+    const sections = [];
+    if (item.aiGood) sections.push({ label: 'よかったところ', text: item.aiGood, icon: SC_ICONS.good });
+    if (item.aiAction) sections.push({ label: '次にやってみよう', text: item.aiAction, icon: SC_ICONS.action });
+    if (item.aiSummary) sections.push({ label: '今月のあなたへ', text: item.aiSummary, icon: SC_ICONS.summary });
+
+    const sectionsHtml = sections.map(s => `
+      <div class="staff-card-section">
+        <div class="sc-label-row">
+          <span class="sc-icon">${s.icon}</span>
+          <span class="sc-label">${s.label}</span>
+        </div>
+        <div class="sc-text">${s.text}</div>
+      </div>`).join('');
+
+    const cardHtml = `
+      <div class="staff-card" id="staffCardForExport">
+        <div class="staff-card-header">
+          <div class="sc-badge">${clinic}</div>
+          <div class="sc-name">${staffName} 様</div>
+          <div class="sc-date">${dateStr} 面談レポート</div>
+        </div>
+        ${sectionsHtml}
+        <div class="staff-card-footer">KADOMORI AI 1on1 EVALUATION</div>
+      </div>`;
+
+    window.__currentCardItem = { staffName, dateStr };
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'card-modal-backdrop';
+    backdrop.id = 'cardModalBackdrop';
+    backdrop.innerHTML = `
+      <div class="card-modal-box">
+        ${cardHtml}
+        <div id="lineSendStatus" style="font-size:12px; color:var(--ink-faint); margin-top:10px; text-align:center;"></div>
+        <div class="card-modal-actions">
+          <button onclick="closeCardModal()">閉じる</button>
+          <button onclick="downloadStaffCard()">画像として保存</button>
+          <button class="primary" onclick="sendCardViaLine()">LINEで送る</button>
+        </div>
+      </div>`;
+    backdrop.onclick = (e) => { if (e.target === backdrop) closeCardModal(); };
+    document.body.appendChild(backdrop);
+  }
+
+  function closeCardModal() {
+    const el = document.getElementById('cardModalBackdrop');
+    if (el) el.remove();
+  }
+
+  function downloadStaffCard() {
+    const el = document.getElementById('staffCardForExport');
+    if (!el || !window.html2canvas) return;
+    html2canvas(el, { scale: 2, backgroundColor: null }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = (window.__currentStaffName || 'staff') + '_評価カード.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  }
+
+  async function sendCardViaLine() {
+    const el = document.getElementById('staffCardForExport');
+    const statusEl = document.getElementById('lineSendStatus');
+    if (!el || !window.html2canvas) return;
+
+    statusEl.textContent = '送信中…';
+    statusEl.style.color = 'var(--ink-faint)';
+
+    try {
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#FBF6F2' });
+      const imageBase64 = canvas.toDataURL('image/png');
+
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'sendLineImage',
+          imageBase64: imageBase64,
+          staffName: window.__currentStaffName
+        })
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        statusEl.textContent = 'LINEに送信しました';
+        statusEl.style.color = '#3D7A5C';
+      } else {
+        statusEl.textContent = result.error || '送信に失敗しました';
+        statusEl.style.color = '#B5483A';
+      }
+    } catch (err) {
+      statusEl.textContent = '送信中にエラーが発生しました';
+      statusEl.style.color = '#B5483A';
+    }
+  }
+
+  loadStaffList();
+</script>
+</body>
+</html>
