@@ -270,7 +270,7 @@ ${selfEvaluation || 'なし'}
 文字起こしや評価者チェックリストに書かれていない事実(行動規範の名称、制度名、点数など)を推測で作り出さないでください。不明な場合は触れずに省略してください。「かどもり」「カドモリ」という会社名は、必ずカタカナで「カドモリ」と表記してください。`;
   const response = UrlFetchApp.fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-    { method: 'POST', contentType: 'application/json', payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } }) }
+    { method: 'POST', contentType: 'application/json', payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: 0 } } }) }
   );
   const result = JSON.parse(response.getContentText());
   return result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;

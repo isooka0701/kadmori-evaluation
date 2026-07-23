@@ -261,15 +261,38 @@
 
       startRecognition(SR);
       recognitionRunning = true;
+      startWatchdog(SR);
       $startBtn.disabled = true;
       document.getElementById('stopAndSaveBtn').disabled = false;
     };
 
     let recGeneration = 0;
+    let lastActivityTime = 0;
+    let watchdogTimer = null;
+    const WATCHDOG_TIMEOUT_MS = 12000;
+
+    function startWatchdog(SR) {
+      if (watchdogTimer) clearInterval(watchdogTimer);
+      watchdogTimer = setInterval(() => {
+        if (!recognitionRunning) return;
+        if (Date.now() - lastActivityTime > WATCHDOG_TIMEOUT_MS) {
+          console.warn('音声認識が無応答のため強制的に再起動します');
+          recGeneration++; // 古いインスタンスからのイベントを無効化
+          try { if (rec) rec.abort(); } catch (e) {}
+          setStatus('🔄 無応答のため再接続中...');
+          startRecognition(SR);
+        }
+      }, 4000);
+    }
+
+    function stopWatchdog() {
+      if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
+    }
 
     function startRecognition(SR) {
       recGeneration++;
       const myGen = recGeneration;
+      lastActivityTime = Date.now();
 
       rec = new SR();
       rec.lang = 'ja-JP';
@@ -277,10 +300,12 @@
       rec.interimResults = true;
       rec.onstart = () => {
         if (myGen !== recGeneration) return;
+        lastActivityTime = Date.now();
         setStatus('🔴 録音中...');
       };
       rec.onresult = (event) => {
         if (myGen !== recGeneration) return;
+        lastActivityTime = Date.now();
         let interim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
@@ -294,6 +319,7 @@
       };
       rec.onerror = (err) => {
         if (myGen !== recGeneration) return;
+        lastActivityTime = Date.now();
         console.error('音声認識エラー:', err.error);
         if (err.error === 'aborted' && !recognitionRunning) return;
         if (err.error === 'no-speech') {
@@ -323,6 +349,7 @@
     function stopRecognition() {
       recognitionRunning = false;
       recGeneration++;
+      stopWatchdog();
       if (rec) rec.stop();
       $startBtn.disabled = false;
       setStatus('⏹ 録音停止');
