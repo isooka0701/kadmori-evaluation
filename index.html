@@ -387,6 +387,7 @@
         lastActivityTime = Date.now();
         setStatus('🔴 録音中...');
       };
+      let pendingInterim = '';
       rec.onresult = (event) => {
         if (myGen !== recGeneration) return;
         lastActivityTime = Date.now();
@@ -398,6 +399,7 @@
             interim += event.results[i][0].transcript;
           }
         }
+        pendingInterim = interim;
         setLogValue(logText + (interim ? '（認識中）' + interim : ''));
         setStatus('🔴 録音中...');
       };
@@ -415,13 +417,20 @@
       rec.onend = () => {
         if (myGen !== recGeneration) return;
         if (!recognitionRunning) return;
+        // Chromeが確定させる前にセッションを打ち切ると、認識中(未確定)だったテキストは
+        // 何もしなければ失われる。再起動前に確定分として記録に残しておく。
+        if (pendingInterim.trim()) {
+          logText += new Date().toLocaleTimeString() + '\n' + pendingInterim + '\n\n';
+          pendingInterim = '';
+          setLogValue(logText);
+        }
         // Chromeは無音や一定時間で自動的に認識を終了するため、都度新しいインスタンスで再開する
         // (同一インスタンスへのstart()再呼び出しはInvalidStateErrorで無音のまま停止することがある)
         setStatus('🔄 再接続中...');
         setTimeout(() => {
           if (myGen !== recGeneration || !recognitionRunning) return;
           startRecognition(SR);
-        }, 250);
+        }, 30);
       };
       try {
         rec.start();
