@@ -1,4 +1,5 @@
 const SPREADSHEET_ID = '1iBeN-ZHZ38tYduTZWzBaGBkndMrIbWUP2DzNO8vIOY4';
+const SELF_EVAL_SPREADSHEET_ID = '1oxHwBseRXE02_zbWtdq5DKQVqE8hz69AxdR4U4l_gvM';
 const LINE_ID_SHEET_NAME = 'LINE_ID';
 const CLINIC_NAMES = ['大阪院', '東京院'];
 
@@ -6,6 +7,7 @@ function doGet(e) {
   const action = e.parameter.action;
   if (action === 'getStaffList') return getStaffList(e.parameter.clinic);
   if (action === 'getStaffDetail') return getStaffDetail(e.parameter.clinic, e.parameter.staff);
+  if (action === 'getSelfEvaluation') return getSelfEvaluationForUI(e.parameter.clinic, e.parameter.staff);
   return HtmlService.createTemplateFromFile('index').evaluate()
     .setTitle('カドモリ 1on1評価システム')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -477,27 +479,42 @@ function testApiKey() {
 }
 
 function getSelfEvaluation(staffName, clinic) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = SpreadsheetApp.openById(SELF_EVAL_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('スタッフ自己評価');
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues();
   let bestMatch = null;
   let bestDiff = Infinity;
   const now = new Date();
   for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][1] === staffName && data[i][2] === clinic) {
-      const formDate = new Date(data[i][3]);
+    if (data[i][11] === staffName && data[i][1] === clinic) {
+      const formDate = new Date(data[i][2]);
       const diff = Math.abs(formDate - now);
       if (diff < 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
         bestDiff = diff;
         bestMatch = {
-          素直: data[i][4], 行動スピード: data[i][5], 振り返り前進: data[i][6],
-          継続挑戦: data[i][7], キッカケづくり: data[i][8], 凡事徹底: data[i][9],
-          頑張ったこと: data[i][10], 課題: data[i][11]
+          素直: data[i][12], 行動スピード: data[i][13], 振り返り前進: data[i][14],
+          継続挑戦: data[i][15], キッカケづくり: data[i][16], 凡事徹底: data[i][17],
+          頑張ったこと: data[i][9], 課題: data[i][10],
+          素直項目: data[i][3], 行動スピード項目: data[i][4], 振り返り前進項目: data[i][5],
+          継続挑戦項目: data[i][6], キッカケづくり項目: data[i][7], 凡事徹底項目: data[i][8]
         };
       }
     }
   }
   return bestMatch;
+}
+
+/**
+ * 評価画面から直近1週間以内のスタッフ自己評価を参照するためのエンドポイント。
+ */
+function getSelfEvaluationForUI(clinic, staffName) {
+  let result = null;
+  try {
+    result = getSelfEvaluation(staffName, clinic);
+  } catch (err) {
+    Logger.log('getSelfEvaluationForUI error: ' + err.message);
+  }
+  return ContentService.createTextOutput(JSON.stringify(result || {})).setMimeType(ContentService.MimeType.JSON);
 }
 
 function onFormSubmit(e) {
