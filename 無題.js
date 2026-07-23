@@ -211,6 +211,13 @@ function doPost(e) {
     return ContentService.createTextOutput('ok');
   }
 
+  let transcript = fixHomophones_(data.transcript || '');
+  try {
+    transcript = cleanTranscript_(transcript);
+  } catch (err) {
+    // クリーンアップに失敗しても、補正前のテキストのまま処理を続行する
+  }
+
   let selfEvalText = '';
   try {
     const selfEval = getSelfEvaluation(data.staff, data.clinic);
@@ -221,18 +228,58 @@ function doPost(e) {
 
   let aiSummary = '';
   try {
-    aiSummary = generateAISummary(data.transcript || '', data.checklistDetail || '', selfEvalText);
+    aiSummary = generateAISummary(transcript, data.checklistDetail || '', selfEvalText);
   } catch(err) {
     aiSummary = 'AI評価の生成に失敗しました：' + err.message;
   }
 
   const url = saveToGoogleDocs(
-    data.clinic, data.staff, data.transcript || '', data.checklistDetail || '',
+    data.clinic, data.staff, transcript, data.checklistDetail || '',
     data.memo || '', data.evaluator || '', data.categoryRanks || '',
     data.categoryReasons || '', data.totalRank || '', data.totalComment || '', aiSummary
   );
   return ContentService.createTextOutput(JSON.stringify({url: url}))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * 音声認識が同音異義語を誤って書き起こしがちな業務用語を補正する。
+ * 例: 「報連相（ほうれんそう）」が野菜の「ほうれん草」として誤認識される。
+ */
+function fixHomophones_(text) {
+  return (text || '').replace(/ほうれん草/g, '報連相');
+}
+
+/**
+ * 音声認識(ブラウザのWeb Speech API)による文字起こしは誤字脱字や
+ * 意味の通らない文が混ざりやすいため、AIで自然な日本語に整える。
+ * 内容の追加・推測・要約はせず、表記の誤りのみを直す。
+ */
+function cleanTranscript_(transcript) {
+  if (!transcript || !transcript.trim()) return transcript;
+  const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const prompt = `以下は音声認識による1on1面談の文字起こしです。音声認識特有の誤字脱字・同音異義語の誤変換・意味の通らない文を、自然な日本語になるように直してください。
+
+【厳守事項】
+・話されていない内容を推測で追加しないでください
+・要約や省略はせず、発言の順序や粒度はそのまま保ってください
+・タイムスタンプの行(例: 14:32:10)はそのまま残してください
+・「かどもり」「カドモリ」という会社名は、必ずカタカナで「カドモリ」と表記してください
+・意味が通り誤字がなければ元の文章のまま出力してください
+・Markdown記法（**太字**、### 見出しなど）は使わず、プレーンテキストで出力してください
+
+【文字起こし】
+${transcript}
+
+修正後の全文のみを出力してください（前置きや説明は不要です）。`;
+  const response = UrlFetchApp.fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    { method: 'POST', contentType: 'application/json', payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: 0 } } }), muteHttpExceptions: true }
+  );
+  const result = JSON.parse(response.getContentText());
+  if (!result.candidates) return transcript;
+  const cleaned = result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+  return stripMarkdown_(cleaned);
 }
 
 function calcTotalScoreFromChecklist_(checklistDetail) {
@@ -267,13 +314,25 @@ ${selfEvaluation || 'なし'}
 ■ 改善ポイント
 ■ 次回アクション
 
-文字起こしや評価者チェックリストに書かれていない事実(行動規範の名称、制度名、点数など)を推測で作り出さないでください。不明な場合は触れずに省略してください。「かどもり」「カドモリ」という会社名は、必ずカタカナで「カドモリ」と表記してください。`;
+文字起こしや評価者チェックリストに書かれていない事実(行動規範の名称、制度名、点数など)を推測で作り出さないでください。不明な場合は触れずに省略してください。「かどもり」「カドモリ」という会社名は、必ずカタカナで「カドモリ」と表記してください。
+
+出力形式について：Markdown記法（**太字**、### 見出し、-や*による箇条書きなど）は一切使わず、プレーンテキストのみで書いてください。箇条書きが必要な場合は「・」を使ってください。`;
   const response = UrlFetchApp.fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     { method: 'POST', contentType: 'application/json', payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: 0 } } }) }
   );
   const result = JSON.parse(response.getContentText());
-  return result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+  const rawText = result.candidates[0].content.parts[result.candidates[0].content.parts.length - 1].text;
+  return stripMarkdown_(rawText);
+}
+
+function stripMarkdown_(text) {
+  return (text || '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/^\s*[\*\-]\s+/gm, '・')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function getResponseHeader_(response, name) {
